@@ -1,0 +1,1019 @@
+{
+  "learned_keyword": [
+    {
+      "value": "学习",
+      "weight": 2.0,
+      "frequency": 24
+    },
+    {
+      "value": "样本",
+      "weight": 2.0,
+      "frequency": 24
+    },
+    {
+      "value": "v100",
+      "weight": 2.0,
+      "frequency": 23
+    },
+    {
+      "value": "Traceback",
+      "weight": 2.0,
+      "frequency": 16
+    },
+    {
+      "value": "example",
+      "weight": 2.0,
+      "frequency": 16
+    },
+    {
+      "value": "com",
+      "weight": 2.0,
+      "frequency": 16
+    },
+    {
+      "value": "123",
+      "weight": 2.0,
+      "frequency": 9
+    },
+    {
+      "value": "请勿",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "外传",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "password",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "Admin",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "错误",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "日志",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "显示",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "仓库",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "泄露",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "示例",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "email",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "test",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "手机号",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "13800138000",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "身份证",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "110105199001019999",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "点击",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "链接",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "https",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "verify",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "输入",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "验证码",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "限时",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "领取",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "访问",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "etc",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "passwd",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "file",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "Windows",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "System32",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "most",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "recent",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "call",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "last",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "Warning",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "mysql",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "connect",
+      "weight": 2.0,
+      "frequency": 8
+    },
+    {
+      "value": "肯德基",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "疯狂",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "星期四",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "50",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "疯狂星期四",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "肯德基疯狂星期四",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "叽里咕噜",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "拨打",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "电话",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "关机",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "稍后",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "您好",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "请问",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "xxxxx",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "一笔",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "额外",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "费用",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "需要",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "支付",
+      "weight": 2.0,
+      "frequency": 1
+    },
+    {
+      "value": "123123123123",
+      "weight": 2.0,
+      "frequency": 1
+    }
+  ],
+  "line_count": [
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 79
+    }
+  ],
+  "sensitive_word_count": [
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 79
+    }
+  ],
+  "url_count": [
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 71
+    },
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 8
+    }
+  ],
+  "email_count": [
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 71
+    },
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 8
+    }
+  ],
+  "max_char_repeat": [
+    {
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 58
+    },
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 11
+    },
+    {
+      "value": "4",
+      "weight": 1.0,
+      "frequency": 9
+    },
+    {
+      "value": "5",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "word_count": [
+    {
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 34
+    },
+    {
+      "value": "4",
+      "weight": 1.0,
+      "frequency": 16
+    },
+    {
+      "value": "5",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "3",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "7",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 5
+    }
+  ],
+  "punct_ratio": [
+    {
+      "value": "0.0",
+      "weight": 1.0,
+      "frequency": 31
+    },
+    {
+      "value": "0.1111111111111111",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.07575757575757576",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.13333333333333333",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.18604651162790697",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.11864406779661017",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.09375",
+      "weight": 1.0,
+      "frequency": 3
+    },
+    {
+      "value": "0.034482758620689655",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.08333333333333333",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.06666666666666667",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.07407407407407407",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "length": [
+    {
+      "value": "10",
+      "weight": 1.0,
+      "frequency": 23
+    },
+    {
+      "value": "63",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "66",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "45",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "43",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "59",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "18",
+      "weight": 1.0,
+      "frequency": 5
+    },
+    {
+      "value": "32",
+      "weight": 1.0,
+      "frequency": 3
+    },
+    {
+      "value": "29",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "36",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "7",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "15",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "27",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "3",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "12",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "char_count": [
+    {
+      "value": "10",
+      "weight": 1.0,
+      "frequency": 23
+    },
+    {
+      "value": "63",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "66",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "45",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "43",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "59",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "18",
+      "weight": 1.0,
+      "frequency": 5
+    },
+    {
+      "value": "32",
+      "weight": 1.0,
+      "frequency": 3
+    },
+    {
+      "value": "29",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "36",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "7",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "15",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "27",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "3",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "12",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "digit_ratio": [
+    {
+      "value": "0.3",
+      "weight": 1.0,
+      "frequency": 23
+    },
+    {
+      "value": "0.0",
+      "weight": 1.0,
+      "frequency": 19
+    },
+    {
+      "value": "0.047619047619047616",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.4393939393939394",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.046511627906976744",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.1111111111111111",
+      "weight": 1.0,
+      "frequency": 5
+    },
+    {
+      "value": "0.09375",
+      "weight": 1.0,
+      "frequency": 3
+    },
+    {
+      "value": "0.4827586206896552",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "1.0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.08333333333333333",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "alpha_ratio": [
+    {
+      "value": "0.5",
+      "weight": 1.0,
+      "frequency": 23
+    },
+    {
+      "value": "0.7777777777777778",
+      "weight": 1.0,
+      "frequency": 13
+    },
+    {
+      "value": "0.4393939393939394",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.8222222222222222",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.6976744186046512",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.7796610169491526",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.78125",
+      "weight": 1.0,
+      "frequency": 3
+    },
+    {
+      "value": "0.4482758620689655",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.8055555555555556",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "1.0",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.9333333333333333",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.9259259259259259",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "space_ratio": [
+    {
+      "value": "0.2",
+      "weight": 1.0,
+      "frequency": 23
+    },
+    {
+      "value": "0.06349206349206349",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.045454545454545456",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.044444444444444446",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.06976744186046512",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.1016949152542373",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "0.1111111111111111",
+      "weight": 1.0,
+      "frequency": 5
+    },
+    {
+      "value": "0.0",
+      "weight": 1.0,
+      "frequency": 5
+    },
+    {
+      "value": "0.03125",
+      "weight": 1.0,
+      "frequency": 3
+    },
+    {
+      "value": "0.034482758620689655",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.027777777777777776",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "chinese_word_count": [
+    {
+      "value": "5",
+      "weight": 1.0,
+      "frequency": 23
+    },
+    {
+      "value": "29",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "18",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "20",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "19",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "21",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "10",
+      "weight": 1.0,
+      "frequency": 5
+    },
+    {
+      "value": "13",
+      "weight": 1.0,
+      "frequency": 4
+    },
+    {
+      "value": "9",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "4",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "11",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "16",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "avg_word_length": [
+    {
+      "value": "2.0",
+      "weight": 1.0,
+      "frequency": 23
+    },
+    {
+      "value": "2.1724137931034484",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "3.6666666666666665",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "2.25",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "2.263157894736842",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "2.8095238095238093",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "1.8",
+      "weight": 1.0,
+      "frequency": 5
+    },
+    {
+      "value": "2.4615384615384617",
+      "weight": 1.0,
+      "frequency": 3
+    },
+    {
+      "value": "3.2222222222222223",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "2.769230769230769",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "1.75",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "1.3636363636363635",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "1.6875",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "3.0",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "12.0",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "entropy": [
+    {
+      "value": "2.9219280948873623",
+      "weight": 1.0,
+      "frequency": 23
+    },
+    {
+      "value": "5.5406168281931425",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "4.495320923032281",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "5.102746985122408",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "4.425810103338054",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "4.22588701611007",
+      "weight": 1.0,
+      "frequency": 8
+    },
+    {
+      "value": "4.058813890331201",
+      "weight": 1.0,
+      "frequency": 5
+    },
+    {
+      "value": "4.8125",
+      "weight": 1.0,
+      "frequency": 3
+    },
+    {
+      "value": "3.7814540658560687",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "1.584962500721156",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "4.680768321596843",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "2.807354922057604",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "3.773557262275185",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "4.176752669776922",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ]
+}
