@@ -2,6 +2,7 @@
 Fairy主题Web界面 - 简化版Flask应用程序
 """
 import os
+import sys
 import json
 import logging
 from datetime import datetime, timedelta
@@ -11,7 +12,12 @@ from functools import wraps
 import threading
 import time
 import sqlite3
-from .auth_db import AuthDatabase
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+from config.settings import DATABASE_PATH, DATABASE_TYPE
+from core.database import db_manager
+from ui.auth_db import AuthDatabase
 from ml.learning_engine import LearningEngine
 from core.blacklist_updater import BlacklistUpdater
 from security.protection import SecurityProtection
@@ -199,6 +205,11 @@ class FairyWebInterface:
                             'score': 90
                         }]
                         return jsonify({'success': True, 'results': results, 'timestamp': datetime.now().isoformat()})
+                    in_train = False
+                    try:
+                        in_train = self.learning_engine.is_in_training_samples(content)
+                    except Exception:
+                        in_train = False
                     pred = self.learning_engine.predict(content, 'text')
                     self.logger.info(f"文本预测: malicious={pred.get('is_malicious')}, conf={pred.get('confidence')}")
                     status = 'danger' if pred.get('is_malicious') else 'safe'
@@ -221,12 +232,25 @@ class FairyWebInterface:
                             results[0]['status'] = 'danger'
                             results[0]['score'] = max(results[0]['score'], 95)
                             results[0]['description'] = '自学习特征验证'
-                        elif self.learning_engine.is_in_training_samples(content):
+                        elif in_train:
                             results[0]['status'] = 'danger'
                             results[0]['score'] = max(results[0]['score'], 95)
                             results[0]['description'] = '自学习特征验证'
                     except Exception:
                         pass
+                    try:
+                        conn = sqlite3.connect(self.learning_engine.db_path)
+                        cur = conn.cursor()
+                        cur.execute('SELECT 1 FROM training_samples WHERE content = ? OR instr(?, content) > 0 OR instr(content, ?) > 0 LIMIT 1', (content, content, content))
+                        hit = bool(cur.fetchone())
+                        conn.close()
+                    except Exception:
+                        hit = False
+                    self.logger.info(f"训练样本命中(Text): {hit}")
+                    if hit:
+                        results[0]['status'] = 'danger'
+                        results[0]['score'] = max(results[0]['score'], 95)
+                        results[0]['description'] = '自学习特征验证'
                     try:
                         stypes = pred.get('sensitive_types') or self.learning_engine._classify_sensitive_text(content)
                     except Exception:
@@ -256,6 +280,11 @@ class FairyWebInterface:
                             'score': 90
                         }]
                         return jsonify({'success': True, 'results': results, 'timestamp': datetime.now().isoformat()})
+                    in_train_ip = False
+                    try:
+                        in_train_ip = self.learning_engine.is_in_training_samples(content)
+                    except Exception:
+                        in_train_ip = False
                     pred = self.learning_engine.predict(content, 'ip')
                     self.logger.info(f"IP预测: malicious={pred.get('is_malicious')}, conf={pred.get('confidence')}")
                     status = 'danger' if pred.get('is_malicious') else 'safe'
@@ -268,12 +297,25 @@ class FairyWebInterface:
                         'score': max(0, min(100, score))
                     }]
                     try:
-                        if self.learning_engine.is_known_malicious(content, 'ip') or (valid_ip and self.learning_engine.is_in_training_samples(content)):
+                        if self.learning_engine.is_known_malicious(content, 'ip') or (valid_ip and in_train_ip):
                             results[0]['status'] = 'danger'
                             results[0]['score'] = max(results[0]['score'], 95)
                             results[0]['description'] = '自学习特征验证'
                     except Exception:
                         pass
+                    try:
+                        conn = sqlite3.connect(self.learning_engine.db_path)
+                        cur = conn.cursor()
+                        cur.execute('SELECT 1 FROM training_samples WHERE content = ? OR instr(?, content) > 0 OR instr(content, ?) > 0 LIMIT 1', (content, content, content))
+                        hit = bool(cur.fetchone())
+                        conn.close()
+                    except Exception:
+                        hit = False
+                    self.logger.info(f"训练样本命中(IP): {hit}")
+                    if hit:
+                        results[0]['status'] = 'danger'
+                        results[0]['score'] = max(results[0]['score'], 95)
+                        results[0]['description'] = '自学习特征验证'
                 elif analysis_type == 'domain':
                     # 域名分析：按URL模型处理，必要时补充协议前缀
                     dom = (content or '').strip()
@@ -281,6 +323,11 @@ class FairyWebInterface:
                         dom_for_pred = f"http://{dom}"
                     else:
                         dom_for_pred = dom
+                    in_train_dom = False
+                    try:
+                        in_train_dom = self.learning_engine.is_in_training_samples(dom)
+                    except Exception:
+                        in_train_dom = False
                     pred = self.learning_engine.predict(dom_for_pred, 'url')
                     self.logger.info(f"域名预测: malicious={pred.get('is_malicious')}, conf={pred.get('confidence')}")
                     status = 'danger' if pred.get('is_malicious') else 'safe'
@@ -293,13 +340,25 @@ class FairyWebInterface:
                         'score': max(0, min(100, score))
                     }]
                     try:
-                        if self.learning_engine.is_known_malicious(dom, 'domain') or \
-                           self.learning_engine.is_in_training_samples(dom):
+                        if self.learning_engine.is_known_malicious(dom, 'domain') or in_train_dom:
                             results[0]['status'] = 'danger'
                             results[0]['score'] = max(results[0]['score'], 95)
                             results[0]['description'] = '自学习特征验证'
                     except Exception:
                         pass
+                    try:
+                        conn = sqlite3.connect(self.learning_engine.db_path)
+                        cur = conn.cursor()
+                        cur.execute('SELECT 1 FROM training_samples WHERE content = ? OR instr(?, content) > 0 OR instr(content, ?) > 0 LIMIT 1', (dom, dom, dom))
+                        hit = bool(cur.fetchone())
+                        conn.close()
+                    except Exception:
+                        hit = False
+                    self.logger.info(f"训练样本命中(Domain): {hit}")
+                    if hit:
+                        results[0]['status'] = 'danger'
+                        results[0]['score'] = max(results[0]['score'], 95)
+                        results[0]['description'] = '自学习特征验证'
                 else:
                     # 其他类型暂用模拟
                     self.logger.warning(f"暂不支持的分析类型: {analysis_type}，使用模拟分析")
@@ -529,7 +588,13 @@ class FairyWebInterface:
                 # 若SQLite无数据且为MySQL模式，回退至MySQL
                 if not rows and DATABASE_TYPE == 'mysql':
                     try:
-                        mysql_rows = db_manager.execute_query('SELECT content, content_type, label, created_time FROM training_samples ORDER BY created_time DESC LIMIT %s', params=(limit,))
+                        mysql_rows = db_manager.execute_query(
+                            'SELECT content, content_type, label, created_time FROM training_samples ORDER BY created_time DESC LIMIT %s',
+                            params=(limit,),
+                            fetch_all=True
+                        )
+                        if not isinstance(mysql_rows, (list, tuple)):
+                            mysql_rows = []
                         rows = [(r[0], r[1], int(r[2]), str(r[3])) for r in mysql_rows]
                     except Exception:
                         rows = []

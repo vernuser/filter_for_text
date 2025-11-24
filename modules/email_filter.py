@@ -19,6 +19,7 @@ class EmailFilter:
     def __init__(self, filter_engine: FilterEngine):
         self.filter_engine = filter_engine
         self.logger = logging.getLogger(__name__)
+        self.monitoring = False
         
         # 邮件服务器配置
         self.imap_servers = {
@@ -390,3 +391,9 @@ class EmailFilter:
             'by_violation_type': {},
             'recent_activity': []
         }
+
+    def start_monitoring(self):
+        self.monitoring = True
+
+    def stop_monitoring(self):
+        self.monitoring = False

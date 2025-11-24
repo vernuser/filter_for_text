@@ -147,7 +147,7 @@ class LearningEngine:
         conn.close()
     
     def add_training_sample(self, content: str, content_type: str, label: int, 
-                          confidence: float = 1.0, source: str = None) -> bool:
+                          confidence: float = 1.0, source: Optional[str] = None) -> bool:
         """
         添加训练样本
         
@@ -543,6 +543,13 @@ class LearningEngine:
             self.text_classifier = best_model
             
             # 评估模型
+            if best_model is None:
+                return {
+                    'model_type': 'none',
+                    'accuracy': 0.0,
+                    'training_samples': len(text_data),
+                    'test_samples': len(y_test)
+                }
             y_pred = best_model.predict(X_test)
             accuracy = accuracy_score(y_test, y_pred)
             

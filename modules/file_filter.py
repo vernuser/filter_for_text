@@ -574,25 +574,21 @@ class FileFilter:
         except Exception as e:
             self.logger.error(f"记录扫描结果错误: {e}")
     
-    def start_monitoring(self, paths: List[str]):
-        """开始监控指定路径"""
+    def start_monitoring(self, paths: Optional[List[str]] = None):
         try:
             if self.monitoring:
                 self.stop_monitoring()
-            
             self.observer = Observer()
             event_handler = FileFilterEventHandler(self)
-            
+            paths = list(paths) if paths else (list(self.monitored_paths) or [os.getcwd()])
             for path in paths:
                 if os.path.exists(path):
                     self.observer.schedule(event_handler, path, recursive=True)
                     self.monitored_paths.add(path)
                     self.logger.info(f"开始监控路径: {path}")
-            
             self.observer.start()
             self.monitoring = True
             self.logger.info("文件监控已启动")
-            
         except Exception as e:
             self.logger.error(f"启动文件监控错误: {e}")
     

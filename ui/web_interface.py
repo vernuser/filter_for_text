@@ -10,6 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import threading
 import time
+import sqlite3
 
 from core.database import db_manager
 
@@ -79,22 +80,22 @@ class WebInterface:
             if request.method == 'POST':
                 username = request.form['username']
                 password = request.form['password']
-                
-                if self.access_control.authenticate(username, password):
-                    session['user_id'] = username
+                user_info = self.access_control.authenticate(username, password)
+                if user_info:
+                    session['user_id'] = user_info['username']
+                    session['session_id'] = user_info.get('session_id')
                     session['login_time'] = datetime.now().isoformat()
                     flash('登录成功', 'success')
                     return redirect(url_for('index'))
                 else:
                     flash('用户名或密码错误', 'error')
-            
             return render_template('fairy_login.html')
         
         @self.app.route('/logout')
         def logout():
-            if 'user_id' in session:
-                self.access_control.end_session(session['user_id'])
-                session.clear()
+            if 'session_id' in session:
+                self.access_control.logout(session['session_id'])
+            session.clear()
             flash('已退出登录', 'info')
             return redirect(url_for('login'))
         
@@ -153,8 +154,9 @@ class WebInterface:
         @self._require_login
         def toggle_filter():
             try:
-                filter_type = request.json.get('filter_type')
-                enabled = request.json.get('enabled')
+                data = request.get_json(silent=True) or {}
+                filter_type = data.get('filter_type')
+                enabled = data.get('enabled')
                 
                 result = self._toggle_filter(filter_type, enabled)
                 return jsonify(result)
@@ -203,7 +205,8 @@ class WebInterface:
         @self._require_login
         def train_model():
             try:
-                force_retrain = request.json.get('force_retrain', False)
+                data = request.get_json(silent=True) or {}
+                force_retrain = bool(data.get('force_retrain', False))
                 result = self.learning_engine.train_models(force_retrain)
                 return jsonify(result)
             except Exception as e:
@@ -215,10 +218,10 @@ class WebInterface:
             try:
                 data = request.json
                 result = self.learning_engine.add_training_sample(
-                    content=data['content'],
-                    content_type=data['content_type'],
-                    label=data['label'],
-                    confidence=data.get('confidence', 1.0),
+                    content=data.get('content') if data else '',
+                    content_type=data.get('content_type', '') if data else '',
+                    label=data.get('label') if data and data.get('label') is not None else 0,
+                    confidence=data.get('confidence', 1.0) if data else 1.0,
                     source='manual'
                 )
                 return jsonify({'success': result})
@@ -236,14 +239,14 @@ class WebInterface:
         @self._require_login
         def add_time_rule():
             try:
-                rule = request.json
+                rule = request.get_json(silent=True) or {}
                 result = self.time_controller.add_time_rule(
-                    user_id=rule['user_id'],
-                    rule_type=rule['rule_type'],
-                    start_time=rule['start_time'],
-                    end_time=rule['end_time'],
+                    user_id=rule.get('user_id', ''),
+                    rule_type=rule.get('rule_type', ''),
+                    start_time=rule.get('start_time', ''),
+                    end_time=rule.get('end_time', ''),
                     max_duration=rule.get('max_duration'),
-                    days_of_week=rule.get('days_of_week'),
+                    days_of_week=rule.get('days_of_week') if 'days_of_week' in rule else None,
                     is_active=rule.get('is_active', True)
                 )
                 return jsonify({'success': result})
@@ -261,10 +264,10 @@ class WebInterface:
         @self._require_login
         def security_scan():
             try:
-                scan_type = request.json.get('scan_type', 'integrity')
-                
+                data = request.get_json(silent=True) or {}
+                scan_type = data.get('scan_type', 'integrity')
                 if scan_type == 'integrity':
-                    result = self.security_protection.check_integrity()
+                    result = self.security_protection.check_file_integrity()
                 else:
                     result = {'success': False, 'message': '未知的扫描类型'}
                 
@@ -285,7 +288,7 @@ class WebInterface:
         @self._require_login
         def restart_system():
             try:
-                component = request.json.get('component')
+                component = request.json.get('component') if request.json else None
                 result = self._restart_component(component)
                 return jsonify(result)
             except Exception as e:
@@ -328,24 +331,24 @@ class WebInterface:
                 SELECT COUNT(*) FROM filter_logs 
                 WHERE DATE(timestamp) = CURDATE()
             ''', fetch_one=True)
-            today_filters = today_filters[0] if today_filters else 0
+            today_filters = today_filters[0] if (isinstance(today_filters, (tuple, list)) and today_filters) else 0
             
             # 本周过滤统计
             week_filters = db_manager.execute_query('''
                 SELECT COUNT(*) FROM filter_logs 
                 WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)
             ''', fetch_one=True)
-            week_filters = week_filters[0] if week_filters else 0
+            week_filters = week_filters[0] if (isinstance(week_filters, (tuple, list)) and week_filters) else 0
             
             # 黑名单条目数
             blacklist_count = db_manager.execute_query(
                 'SELECT COUNT(*) FROM blacklist_items', fetch_one=True)
-            blacklist_count = blacklist_count[0] if blacklist_count else 0
+            blacklist_count = blacklist_count[0] if (isinstance(blacklist_count, (tuple, list)) and blacklist_count) else 0
             
             # 训练样本数
             training_samples = db_manager.execute_query(
                 'SELECT COUNT(*) FROM training_samples', fetch_one=True)
-            training_samples = training_samples[0] if training_samples else 0
+            training_samples = training_samples[0] if (isinstance(training_samples, (tuple, list)) and training_samples) else 0
             
             # 最近威胁
             recent_threats = db_manager.execute_query('''
@@ -366,8 +369,8 @@ class WebInterface:
                 ORDER BY DATE(timestamp)
             ''', fetch_all=True)
             
-            filter_chart_labels = [str(row[0]) for row in chart_data] if chart_data else []
-            filter_chart_data = [row[1] for row in chart_data] if chart_data else []
+            filter_chart_labels = [str(row[0]) for row in chart_data] if isinstance(chart_data, list) and chart_data else []
+            filter_chart_data = [row[1] for row in chart_data] if isinstance(chart_data, list) and chart_data else []
             
             # 威胁类型统计
             threat_data = db_manager.execute_query('''
@@ -377,8 +380,8 @@ class WebInterface:
                 GROUP BY action
             ''', fetch_all=True)
             
-            threat_chart_labels = [row[0] for row in threat_data] if threat_data else []
-            threat_chart_data = [row[1] for row in threat_data] if threat_data else []
+            threat_chart_labels = [row[0] for row in threat_data] if isinstance(threat_data, list) and threat_data else []
+            threat_chart_data = [row[1] for row in threat_data] if isinstance(threat_data, list) else []
             
             # 最近活动（用于recent_activities）
             recent_activities = db_manager.execute_query('''
@@ -505,9 +508,9 @@ class WebInterface:
         try:
             if filter_type == 'web_filter':
                 if enabled:
-                    self.web_filter.start()
+                    self.web_filter.start_proxy_server()
                 else:
-                    self.web_filter.stop()
+                    self.web_filter.stop_proxy_server()
                 self.system_status['web_filter'] = enabled
             
             elif filter_type == 'email_filter':
@@ -536,7 +539,7 @@ class WebInterface:
         except Exception as e:
             return {'success': False, 'message': str(e)}
     
-    def _get_recent_logs(self, limit=50):
+    def _get_recent_logs_sqlite(self, limit=50):
         """获取最近日志"""
         try:
             conn = sqlite3.connect(DATABASE_PATH)
@@ -567,7 +570,7 @@ class WebInterface:
             self.logger.error(f"获取日志失败: {e}")
             return []
     
-    def _get_security_alerts(self):
+    def _get_security_alerts_sqlite(self):
         """获取安全警报"""
         try:
             conn = sqlite3.connect(DATABASE_PATH)
@@ -764,9 +767,9 @@ class WebInterface:
         """重启组件"""
         try:
             if component == 'web_filter':
-                self.web_filter.stop()
+                self.web_filter.stop_proxy_server()
                 time.sleep(1)
-                self.web_filter.start()
+                self.web_filter.start_proxy_server()
             elif component == 'email_filter':
                 self.email_filter.stop_monitoring()
                 time.sleep(1)
@@ -791,14 +794,14 @@ class WebInterface:
                 SELECT COUNT(*) FROM filter_logs 
                 WHERE action = 'blocked' AND DATE(timestamp) = CURDATE()
             ''', fetch_one=True)
-            threats_today = threats_today[0] if threats_today else 0
+            threats_today = threats_today[0] if (isinstance(threats_today, (tuple, list)) and threats_today) else 0
             
             # 获取今日扫描文件数量
             files_scanned = db_manager.execute_query('''
                 SELECT COUNT(*) FROM filter_logs 
                 WHERE filter_type = 'file' AND DATE(timestamp) = CURDATE()
             ''', fetch_one=True)
-            files_scanned = files_scanned[0] if files_scanned else 0
+            files_scanned = files_scanned[0] if (isinstance(files_scanned, (tuple, list)) and files_scanned) else 0
             
             # 获取活跃连接数（模拟数据）
             active_connections = 15  # 这里可以从实际的网络监控模块获取
@@ -808,7 +811,7 @@ class WebInterface:
                 SELECT COUNT(*) FROM filter_logs 
                 WHERE DATE(timestamp) = CURDATE()
             ''', fetch_one=True)
-            total_requests = total_requests[0] if total_requests else 0
+            total_requests = total_requests[0] if (isinstance(total_requests, (tuple, list)) and total_requests) else 0
             
             return {
                 'threats': threats_today,
@@ -844,7 +847,7 @@ class WebInterface:
                     'action': log[2],
                     'content': log[3][:50] + '...' if len(log[3]) > 50 else log[3]
                 }
-                for log in logs
+                for log in (logs if isinstance(logs, list) else [])
             ] if logs else []
             
         except Exception as e:
@@ -868,7 +871,7 @@ class WebInterface:
                     'message': alert[1][:100] + '...' if len(alert[1]) > 100 else alert[1],
                     'level': 'high' if 'virus' in alert[1].lower() or 'malware' in alert[1].lower() else 'medium'
                 }
-                for alert in alerts
+                for alert in (alerts if isinstance(alerts, list) else [])
             ] if alerts else []
             
         except Exception as e:
@@ -884,22 +887,29 @@ class WebInterface:
                 WHERE action = 'blocked' AND content LIKE '%virus%' OR content LIKE '%malware%'
                 AND DATE(timestamp) = CURDATE()
             ''', fetch_one=True)
-            high_threats = high_threats[0] if high_threats else 0
+            high_threats = high_threats[0] if (isinstance(high_threats, (tuple, list)) and high_threats) else 0
             
             medium_threats = db_manager.execute_query('''
                 SELECT COUNT(*) FROM filter_logs 
                 WHERE action = 'blocked' AND (content LIKE '%suspicious%' OR content LIKE '%warning%')
                 AND DATE(timestamp) = CURDATE()
             ''', fetch_one=True)
-            medium_threats = medium_threats[0] if medium_threats else 0
+            medium_threats = medium_threats[0] if (isinstance(medium_threats, (tuple, list)) and medium_threats) else 0
             
             low_threats = db_manager.execute_query('''
                 SELECT COUNT(*) FROM filter_logs 
                 WHERE action = 'blocked' 
                 AND DATE(timestamp) = CURDATE()
             ''', fetch_one=True)
-            low_threats = (low_threats[0] if low_threats else 0) - high_threats - medium_threats
-            low_threats = max(0, low_threats)  # 确保不为负数
+            low_threats = low_threats[0] if (isinstance(low_threats, (tuple, list)) and low_threats) else 0
+            # 确保所有变量都是数值类型，避免类型错误
+            try:
+                high_val = int(high_threats) if high_threats is not None else 0
+                medium_val = int(medium_threats) if medium_threats is not None else 0
+                low_val = int(low_threats) if low_threats is not None else 0
+                low_threats = max(0, low_val - high_val - medium_val)
+            except (ValueError, TypeError):
+                low_threats = 0
             
             return {
                 'high': high_threats,
