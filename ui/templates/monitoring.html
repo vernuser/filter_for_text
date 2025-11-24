@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+
+{% block title %}监控中心 - 网络内容安全过滤系统{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+    <!-- 页面标题 -->
+    <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center space-x-3">
+            <div class="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+                <i class="fas fa-chart-line text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold text-white">监控中心</h1>
+                <p class="text-gray-400">实时监控系统安全状态</p>
+            </div>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="refreshMonitoring()" 
+                    class="px-6 py-3 bg-white/10 backdrop-blur-sm text-white rounded-xl hover:bg-white/20 transition-all duration-300 border border-white/20">
+                <i class="fas fa-sync-alt mr-2"></i>刷新
+            </button>
+            <button onclick="exportReport()" 
+                    class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                <i class="fas fa-file-export mr-2"></i>导出报告
+            </button>
+        </div>
+    </div>
+
+    <!-- 实时监控统计卡片 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- 实时威胁 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-gradient-to-r from-red-500 to-pink-500 rounded-xl">
+                    <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400">
+                        <i class="fas fa-arrow-up mr-1"></i>+12%
+                    </span>
+                </div>
+            </div>
+            <h3 class="text-white text-lg font-semibold mb-1">实时威胁</h3>
+            <p class="text-3xl font-bold text-white mb-2" id="realtime-threats">{{ realtime_stats.threats or 0 }}</p>
+            <p class="text-gray-400 text-sm">过去1小时</p>
+        </div>
+
+        <!-- 拦截请求 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                    <i class="fas fa-shield-alt text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400">
+                        <i class="fas fa-arrow-up mr-1"></i>+8%
+                    </span>
+                </div>
+            </div>
+            <h3 class="text-white text-lg font-semibold mb-1">拦截请求</h3>
+            <p class="text-3xl font-bold text-white mb-2" id="blocked-requests">{{ realtime_stats.blocked or 0 }}</p>
+            <p class="text-gray-400 text-sm">过去1小时</p>
+        </div>
+
+        <!-- 扫描文件 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl">
+                    <i class="fas fa-search text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400">
+                        <i class="fas fa-arrow-down mr-1"></i>-3%
+                    </span>
+                </div>
+            </div>
+            <h3 class="text-white text-lg font-semibold mb-1">扫描文件</h3>
+            <p class="text-3xl font-bold text-white mb-2" id="scanned-files">{{ realtime_stats.scanned or 0 }}</p>
+            <p class="text-gray-400 text-sm">过去1小时</p>
+        </div>
+
+        <!-- 活跃连接 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
+                    <i class="fas fa-network-wired text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400">
+                        <i class="fas fa-minus mr-1"></i>0%
+                    </span>
+                </div>
+            </div>
+            <h3 class="text-white text-lg font-semibold mb-1">活跃连接</h3>
+            <p class="text-3xl font-bold text-white mb-2" id="active-connections">{{ realtime_stats.connections or 0 }}</p>
+            <p class="text-gray-400 text-sm">当前</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- 实时活动监控 -->
+        <div class="lg:col-span-2 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-white flex items-center">
+                    <i class="fas fa-activity mr-3 text-blue-400"></i>
+                    实时活动监控
+                </h2>
+                <div class="flex space-x-2">
+                    <button class="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm" data-period="1h">1小时</button>
+                    <button class="px-3 py-1 bg-white/10 text-gray-300 rounded-lg text-sm hover:bg-white/20" data-period="6h">6小时</button>
+                    <button class="px-3 py-1 bg-white/10 text-gray-300 rounded-lg text-sm hover:bg-white/20" data-period="24h">24小时</button>
+                </div>
+            </div>
+            <div class="h-64">
+                <canvas id="activityChart" class="w-full h-full"></canvas>
+            </div>
+        </div>
+
+        <!-- 威胁等级分布 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <h2 class="text-xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-chart-pie mr-3 text-purple-400"></i>
+                威胁等级分布
+            </h2>
+            <div class="h-48 mb-4">
+                <canvas id="threatLevelChart" class="w-full h-full"></canvas>
+            </div>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                        <span class="text-gray-300 text-sm">高危</span>
+                    </div>
+                    <span class="text-white font-medium">{{ threat_levels.high or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                        <span class="text-gray-300 text-sm">中危</span>
+                    </div>
+                    <span class="text-white font-medium">{{ threat_levels.medium or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                        <span class="text-gray-300 text-sm">低危</span>
+                    </div>
+                    <span class="text-white font-medium">{{ threat_levels.low or 0 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统性能监控 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- CPU和内存使用率 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <h2 class="text-xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-microchip mr-3 text-green-400"></i>
+                系统性能
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-300">CPU使用率</span>
+                        <span class="text-white font-medium" id="cpu-usage">{{ system_stats.cpu_usage or 0 }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300" 
+                             style="width: {{ system_stats.cpu_usage or 0 }}%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-300">内存使用率</span>
+                        <span class="text-white font-medium" id="memory-usage">{{ system_stats.memory_usage or 0 }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300" 
+                             style="width: {{ system_stats.memory_usage or 0 }}%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-300">磁盘使用率</span>
+                        <span class="text-white font-medium" id="disk-usage">{{ system_stats.disk_usage or 0 }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-gradient-to-r from-yellow-500 to-orange-500 h-2 rounded-full transition-all duration-300" 
+                             style="width: {{ system_stats.disk_usage or 0 }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 网络流量监控 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <h2 class="text-xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-wifi mr-3 text-cyan-400"></i>
+                网络流量
+            </h2>
+            <div class="h-48">
+                <canvas id="networkChart" class="w-full h-full"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近活动日志 -->
+    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold text-white flex items-center">
+                <i class="fas fa-list-alt mr-3 text-orange-400"></i>
+                最近活动日志
+            </h2>
+            <button onclick="clearLogs()" 
+                    class="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all duration-300">
+                <i class="fas fa-trash mr-2"></i>清空日志
+            </button>
+        </div>
+        
+        <div class="space-y-3 max-h-64 overflow-y-auto">
+            {% for log in recent_logs %}
+            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 rounded-lg {{ 'bg-red-500/20' if log.level == 'error' else 'bg-yellow-500/20' if log.level == 'warning' else 'bg-blue-500/20' }}">
+                        <i class="fas {{ 'fa-exclamation-triangle' if log.level == 'error' else 'fa-exclamation-circle' if log.level == 'warning' else 'fa-info-circle' }} 
+                                  {{ 'text-red-400' if log.level == 'error' else 'text-yellow-400' if log.level == 'warning' else 'text-blue-400' }}"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">{{ log.message }}</p>
+                        <p class="text-gray-400 text-sm">{{ log.source }}</p>
+                    </div>
+                </div>
+                <span class="text-gray-400 text-sm">{{ log.timestamp }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+// 图表初始化
+let activityChart, threatLevelChart, networkChart;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    startRealTimeUpdates();
+});
+
+function initializeCharts() {
+    // 活动监控图表
+    const activityCtx = document.getElementById('activityChart').getContext('2d');
+    activityChart = new Chart(activityCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '威胁检测',
+                data: [],
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4
+            }, {
+                label: '拦截请求',
+                data: [],
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'white'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            }
+        }
+    });
+
+    // 威胁等级分布图表
+    const threatCtx = document.getElementById('threatLevelChart').getContext('2d');
+    threatLevelChart = new Chart(threatCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['高危', '中危', '低危'],
+            datasets: [{
+                data: [{{ threat_levels.high or 0 }}, {{ threat_levels.medium or 0 }}, {{ threat_levels.low or 0 }}],
+                backgroundColor: [
+                    'rgb(239, 68, 68)',
+                    'rgb(245, 158, 11)',
+                    'rgb(34, 197, 94)'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // 网络流量图表
+    const networkCtx = document.getElementById('networkChart').getContext('2d');
+    networkChart = new Chart(networkCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '入站流量',
+                data: [],
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4
+            }, {
+                label: '出站流量',
+                data: [],
+                borderColor: 'rgb(168, 85, 247)',
+                backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'white'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function startRealTimeUpdates() {
+    setInterval(updateRealTimeData, 5000); // 每5秒更新一次
+}
+
+function updateRealTimeData() {
+    fetch('/api/monitoring/realtime')
+        .then(response => response.json())
+        .then(data => {
+            // 更新统计数据
+            document.getElementById('realtime-threats').textContent = data.threats || 0;
+            document.getElementById('blocked-requests').textContent = data.blocked || 0;
+            document.getElementById('scanned-files').textContent = data.scanned || 0;
+            document.getElementById('active-connections').textContent = data.connections || 0;
+            
+            // 更新系统性能
+            if (data.system) {
+                document.getElementById('cpu-usage').textContent = data.system.cpu + '%';
+                document.getElementById('memory-usage').textContent = data.system.memory + '%';
+                document.getElementById('disk-usage').textContent = data.system.disk + '%';
+            }
+            
+            // 更新图表数据
+            updateChartData(data);
+        })
+        .catch(error => console.error('Error updating real-time data:', error));
+}
+
+function updateChartData(data) {
+    const now = new Date().toLocaleTimeString();
+    
+    // 更新活动监控图表
+    if (activityChart.data.labels.length > 20) {
+        activityChart.data.labels.shift();
+        activityChart.data.datasets[0].data.shift();
+        activityChart.data.datasets[1].data.shift();
+    }
+    
+    activityChart.data.labels.push(now);
+    activityChart.data.datasets[0].data.push(data.threats || 0);
+    activityChart.data.datasets[1].data.push(data.blocked || 0);
+    activityChart.update('none');
+    
+    // 更新网络流量图表
+    if (networkChart.data.labels.length > 20) {
+        networkChart.data.labels.shift();
+        networkChart.data.datasets[0].data.shift();
+        networkChart.data.datasets[1].data.shift();
+    }
+    
+    networkChart.data.labels.push(now);
+    networkChart.data.datasets[0].data.push(data.network?.inbound || 0);
+    networkChart.data.datasets[1].data.push(data.network?.outbound || 0);
+    networkChart.update('none');
+}
+
+function refreshMonitoring() {
+    location.reload();
+}
+
+function exportReport() {
+    fetch('/api/monitoring/export', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'monitoring_report_' + new Date().toISOString().slice(0, 10) + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showToast('报告导出成功', 'success');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('导出失败', 'error');
+    });
+}
+
+function clearLogs() {
+    if (confirm('确定要清空所有日志吗？')) {
+        fetch('/api/monitoring/clear_logs', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('日志已清空', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('清空失败', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('操作失败', 'error');
+        });
+    }
+}
+
+// 时间段切换
+document.querySelectorAll('[data-period]').forEach(button => {
+    button.addEventListener('click', function() {
+        document.querySelectorAll('[data-period]').forEach(btn => {
+            btn.classList.remove('bg-blue-500');
+            btn.classList.add('bg-white/10', 'text-gray-300');
+        });
+        
+        this.classList.remove('bg-white/10', 'text-gray-300');
+        this.classList.add('bg-blue-500');
+        
+        const period = this.getAttribute('data-period');
+        updateChartPeriod(period);
+    });
+});
+
+function updateChartPeriod(period) {
+    fetch(`/api/monitoring/data?period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+            activityChart.data.labels = data.labels;
+            activityChart.data.datasets[0].data = data.threats;
+            activityChart.data.datasets[1].data = data.blocked;
+            activityChart.update();
+        })
+        .catch(error => console.error('Error updating chart period:', error));
+}
+</script>
+{% endblock %}

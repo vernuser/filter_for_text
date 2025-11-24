@@ -1,0 +1,889 @@
+{% extends "base.html" %}
+
+{% block title %}时间控制 - 网络内容安全过滤系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-clock me-2"></i>
+        时间控制管理
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+                <i class="fas fa-plus me-1"></i>添加规则
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="enableAllRules()">
+                <i class="fas fa-play me-1"></i>启用全部
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-warning" onclick="disableAllRules()">
+                <i class="fas fa-pause me-1"></i>暂停全部
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 状态概览卡片 -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">活跃规则</h6>
+                        <h3 class="mb-0">{{ rule_stats.active_rules or 0 }}</h3>
+                        <small class="text-light">总共 {{ rule_stats.total_rules or 0 }} 条</small>
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-rules fa-2x"></i>
+                        <div class="mt-1">
+                            <span class="badge bg-light text-dark">
+                                {{ ((rule_stats.active_rules or 0) / (rule_stats.total_rules or 1) * 100) | round(1) }}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">在线用户</h6>
+                        <h3 class="mb-0">{{ session_stats.online_users or 0 }}</h3>
+                        <small class="text-light">当前活跃</small>
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-users fa-2x"></i>
+                        <div class="mt-1">
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-arrow-up"></i> +3
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">违规次数</h6>
+                        <h3 class="mb-0">{{ violation_stats.today or 0 }}</h3>
+                        <small class="text-light">今日</small>
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <div class="mt-1">
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-arrow-down"></i> -15%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">强制下线</h6>
+                        <h3 class="mb-0">{{ logout_stats.today or 0 }}</h3>
+                        <small class="text-light">今日</small>
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-sign-out-alt fa-2x"></i>
+                        <div class="mt-1">
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-minus"></i> 0%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 时间规则管理 -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        时间规则管理
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active" data-filter="all">全部</button>
+                        <button class="btn btn-outline-secondary" data-filter="active">活跃</button>
+                        <button class="btn btn-outline-secondary" data-filter="inactive">停用</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>规则名称</th>
+                                <th>用户/组</th>
+                                <th>时间段</th>
+                                <th>星期</th>
+                                <th>动作</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rules-table">
+                            {% for rule in time_rules %}
+                            <tr data-rule-id="{{ rule.id }}" data-status="{{ rule.status }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-{{ rule.icon or 'clock' }} me-2"></i>
+                                        <div>
+                                            <div class="fw-bold">{{ rule.name }}</div>
+                                            <small class="text-muted">{{ rule.description or '无描述' }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'primary' if rule.target_type == 'user' else 'secondary' }}">
+                                        {{ rule.target_name }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>
+                                        {{ rule.start_time }} - {{ rule.end_time }}
+                                        {% if rule.duration_limit %}
+                                        <br><span class="text-muted">限时: {{ rule.duration_limit }}分钟</span>
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <small>{{ rule.weekdays or '每天' }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'danger' if rule.action == 'block' else 'warning' if rule.action == 'warn' else 'info' }}">
+                                        {{ rule.action_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" 
+                                               {{ 'checked' if rule.enabled else '' }}
+                                               onchange="toggleRule({{ rule.id }}, this.checked)">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="editRule({{ rule.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-info" onclick="viewRuleStats({{ rule.id }})">
+                                            <i class="fas fa-chart-bar"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deleteRule({{ rule.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 当前会话 -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user-clock me-2"></i>
+                    当前会话
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush" id="active-sessions">
+                    {% for session in active_sessions %}
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <div class="status-indicator status-online me-2"></div>
+                                    <h6 class="mb-0">{{ session.username }}</h6>
+                                </div>
+                                <p class="mb-1 text-muted small">
+                                    <i class="fas fa-clock me-1"></i>
+                                    在线时长: {{ session.duration }}
+                                </p>
+                                <p class="mb-1 text-muted small">
+                                    <i class="fas fa-desktop me-1"></i>
+                                    {{ session.computer_name }}
+                                </p>
+                                {% if session.time_limit %}
+                                <div class="progress mt-2" style="height: 4px;">
+                                    <div class="progress-bar bg-{{ 'danger' if session.usage_percent > 80 else 'warning' if session.usage_percent > 60 else 'success' }}" 
+                                         style="width: {{ session.usage_percent }}%"></div>
+                                </div>
+                                <small class="text-muted">
+                                    剩余: {{ session.remaining_time }}
+                                </small>
+                                {% endif %}
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="warnUser('{{ session.id }}')">发送警告</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="extendTime('{{ session.id }}')">延长时间</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="forceLogout('{{ session.id }}')">强制下线</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="list-group-item px-0 text-center text-muted">
+                        <i class="fas fa-info-circle me-2"></i>
+                        暂无活跃会话
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 使用统计 -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-area me-2"></i>
+                        使用统计
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active" data-period="today">今日</button>
+                        <button class="btn btn-outline-secondary" data-period="week">本周</button>
+                        <button class="btn btn-outline-secondary" data-period="month">本月</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="usageChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 违规记录 -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        违规记录
+                    </h5>
+                    <a href="#" class="btn btn-sm btn-outline-primary">查看全部</a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for violation in recent_violations %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <span class="badge bg-{{ 'danger' if violation.severity == 'high' else 'warning' if violation.severity == 'medium' else 'info' }} me-2">
+                                        {{ violation.type_display }}
+                                    </span>
+                                    <h6 class="mb-0">{{ violation.username }}</h6>
+                                </div>
+                                <p class="mb-1 text-muted small">{{ violation.description }}</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    {{ violation.timestamp }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="list-group-item text-center text-muted">
+                        <i class="fas fa-check-circle me-2"></i>
+                        暂无违规记录
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加规则模态框 -->
+<div class="modal fade" id="addRuleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加时间控制规则</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-rule-form">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">规则名称</label>
+                                <input type="text" class="form-control" name="name" 
+                                       placeholder="输入规则名称" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">目标类型</label>
+                                <select class="form-select" name="target_type" required>
+                                    <option value="">请选择</option>
+                                    <option value="user">指定用户</option>
+                                    <option value="group">用户组</option>
+                                    <option value="all">所有用户</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3" id="target-selection" style="display: none;">
+                        <label class="form-label">选择目标</label>
+                        <select class="form-select" name="target_id">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">规则描述</label>
+                        <textarea class="form-control" name="description" rows="2" 
+                                  placeholder="可选的规则描述"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">开始时间</label>
+                                <input type="time" class="form-control" name="start_time" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">结束时间</label>
+                                <input type="time" class="form-control" name="end_time" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">适用星期</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="checkbox" class="btn-check" name="weekdays" value="1" id="mon">
+                            <label class="btn btn-outline-primary" for="mon">一</label>
+                            
+                            <input type="checkbox" class="btn-check" name="weekdays" value="2" id="tue">
+                            <label class="btn btn-outline-primary" for="tue">二</label>
+                            
+                            <input type="checkbox" class="btn-check" name="weekdays" value="3" id="wed">
+                            <label class="btn btn-outline-primary" for="wed">三</label>
+                            
+                            <input type="checkbox" class="btn-check" name="weekdays" value="4" id="thu">
+                            <label class="btn btn-outline-primary" for="thu">四</label>
+                            
+                            <input type="checkbox" class="btn-check" name="weekdays" value="5" id="fri">
+                            <label class="btn btn-outline-primary" for="fri">五</label>
+                            
+                            <input type="checkbox" class="btn-check" name="weekdays" value="6" id="sat">
+                            <label class="btn btn-outline-primary" for="sat">六</label>
+                            
+                            <input type="checkbox" class="btn-check" name="weekdays" value="0" id="sun">
+                            <label class="btn btn-outline-primary" for="sun">日</label>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">执行动作</label>
+                                <select class="form-select" name="action" required>
+                                    <option value="">请选择动作</option>
+                                    <option value="block">阻止上网</option>
+                                    <option value="warn">发送警告</option>
+                                    <option value="logout">强制下线</option>
+                                    <option value="limit">限制时长</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3" id="duration-limit" style="display: none;">
+                                <label class="form-label">时长限制（分钟）</label>
+                                <input type="number" class="form-control" name="duration_limit" 
+                                       min="1" max="1440" placeholder="60">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="enabled" checked>
+                            <label class="form-check-label">
+                                立即启用此规则
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addRule()">添加规则</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 使用统计图表
+    const usageCtx = document.getElementById('usageChart').getContext('2d');
+    const usageChart = new Chart(usageCtx, {
+        type: 'line',
+        data: {
+            labels: {{ usage_chart_labels | tojson | safe }},
+            datasets: [{
+                label: '在线用户数',
+                data: {{ usage_chart_users | tojson | safe }},
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                tension: 0.4
+            }, {
+                label: '违规次数',
+                data: {{ usage_chart_violations | tojson | safe }},
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // 规则过滤
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            const filter = this.dataset.filter;
+            filterRules(filter);
+        });
+    });
+    
+    function filterRules(filter) {
+        const rows = document.querySelectorAll('#rules-table tr[data-rule-id]');
+        rows.forEach(row => {
+            const status = row.dataset.status;
+            if (filter === 'all' || 
+                (filter === 'active' && status === 'enabled') ||
+                (filter === 'inactive' && status === 'disabled')) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    // 目标类型选择
+    document.querySelector('select[name="target_type"]').addEventListener('change', function() {
+        const targetSelection = document.getElementById('target-selection');
+        const targetSelect = document.querySelector('select[name="target_id"]');
+        
+        if (this.value === 'user' || this.value === 'group') {
+            targetSelection.style.display = 'block';
+            loadTargets(this.value);
+        } else {
+            targetSelection.style.display = 'none';
+        }
+    });
+    
+    function loadTargets(type) {
+        const targetSelect = document.querySelector('select[name="target_id"]');
+        
+        fetch(`/api/time_control/targets?type=${type}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    targetSelect.innerHTML = '<option value="">请选择</option>';
+                    data.targets.forEach(target => {
+                        const option = document.createElement('option');
+                        option.value = target.id;
+                        option.textContent = target.name;
+                        targetSelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('加载目标失败:', error));
+    }
+    
+    // 动作选择
+    document.querySelector('select[name="action"]').addEventListener('change', function() {
+        const durationLimit = document.getElementById('duration-limit');
+        if (this.value === 'limit') {
+            durationLimit.style.display = 'block';
+        } else {
+            durationLimit.style.display = 'none';
+        }
+    });
+    
+    // 添加规则
+    function addRule() {
+        const form = document.getElementById('add-rule-form');
+        const formData = new FormData(form);
+        
+        // 收集星期数据
+        const weekdays = [];
+        document.querySelectorAll('input[name="weekdays"]:checked').forEach(cb => {
+            weekdays.push(parseInt(cb.value));
+        });
+        
+        const ruleData = {
+            name: formData.get('name'),
+            description: formData.get('description'),
+            target_type: formData.get('target_type'),
+            target_id: formData.get('target_id'),
+            start_time: formData.get('start_time'),
+            end_time: formData.get('end_time'),
+            weekdays: weekdays,
+            action: formData.get('action'),
+            duration_limit: formData.get('duration_limit') ? parseInt(formData.get('duration_limit')) : null,
+            enabled: formData.get('enabled') === 'on'
+        };
+        
+        fetch('/api/time_control/rules', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(ruleData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('规则添加成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('addRuleModal')).hide();
+                form.reset();
+                location.reload();
+            } else {
+                showToast('添加失败: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            showToast('添加失败: ' + error.message, 'danger');
+        });
+    }
+    
+    // 切换规则状态
+    function toggleRule(ruleId, enabled) {
+        fetch(`/api/time_control/rules/${ruleId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ enabled: enabled })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(`规则已${enabled ? '启用' : '停用'}`, 'success');
+                // 更新行状态
+                const row = document.querySelector(`tr[data-rule-id="${ruleId}"]`);
+                if (row) {
+                    row.dataset.status = enabled ? 'enabled' : 'disabled';
+                }
+            } else {
+                showToast('操作失败: ' + data.message, 'danger');
+                // 恢复开关状态
+                const checkbox = document.querySelector(`tr[data-rule-id="${ruleId}"] input[type="checkbox"]`);
+                if (checkbox) {
+                    checkbox.checked = !enabled;
+                }
+            }
+        })
+        .catch(error => {
+            showToast('操作失败: ' + error.message, 'danger');
+            // 恢复开关状态
+            const checkbox = document.querySelector(`tr[data-rule-id="${ruleId}"] input[type="checkbox"]`);
+            if (checkbox) {
+                checkbox.checked = !enabled;
+            }
+        });
+    }
+    
+    // 编辑规则
+    function editRule(ruleId) {
+        // 实现编辑规则功能
+        showToast('编辑功能开发中', 'info');
+    }
+    
+    // 查看规则统计
+    function viewRuleStats(ruleId) {
+        window.open(`/time_control/rule_stats/${ruleId}`, '_blank');
+    }
+    
+    // 删除规则
+    function deleteRule(ruleId) {
+        confirmAction('确定要删除这个规则吗？', function() {
+            fetch(`/api/time_control/rules/${ruleId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('规则删除成功', 'success');
+                        location.reload();
+                    } else {
+                        showToast('删除失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('删除失败: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // 启用所有规则
+    function enableAllRules() {
+        confirmAction('确定要启用所有规则吗？', function() {
+            fetch('/api/time_control/rules/enable_all', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('所有规则已启用', 'success');
+                        location.reload();
+                    } else {
+                        showToast('操作失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('操作失败: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // 停用所有规则
+    function disableAllRules() {
+        confirmAction('确定要停用所有规则吗？', function() {
+            fetch('/api/time_control/rules/disable_all', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('所有规则已停用', 'warning');
+                        location.reload();
+                    } else {
+                        showToast('操作失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('操作失败: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // 会话管理
+    function warnUser(sessionId) {
+        const message = prompt('请输入警告消息:');
+        if (message) {
+            fetch(`/api/time_control/sessions/${sessionId}/warn`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('警告已发送', 'success');
+                } else {
+                    showToast('发送失败: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                showToast('发送失败: ' + error.message, 'danger');
+            });
+        }
+    }
+    
+    function extendTime(sessionId) {
+        const minutes = prompt('请输入延长时间（分钟）:');
+        if (minutes && !isNaN(minutes)) {
+            fetch(`/api/time_control/sessions/${sessionId}/extend`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ minutes: parseInt(minutes) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('时间延长成功', 'success');
+                    location.reload();
+                } else {
+                    showToast('延长失败: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                showToast('延长失败: ' + error.message, 'danger');
+            });
+        }
+    }
+    
+    function forceLogout(sessionId) {
+        confirmAction('确定要强制用户下线吗？', function() {
+            fetch(`/api/time_control/sessions/${sessionId}/logout`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('用户已强制下线', 'warning');
+                        location.reload();
+                    } else {
+                        showToast('操作失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('操作失败: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // 时间段切换
+    document.querySelectorAll('[data-period]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            const period = this.dataset.period;
+            updateUsageChart(period);
+        });
+    });
+    
+    function updateUsageChart(period) {
+        fetch(`/api/time_control/usage_stats?period=${period}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    usageChart.data.labels = data.labels;
+                    usageChart.data.datasets[0].data = data.users;
+                    usageChart.data.datasets[1].data = data.violations;
+                    usageChart.update();
+                }
+            })
+            .catch(error => console.error('更新使用统计失败:', error));
+    }
+    
+    // 定期更新活跃会话
+    function updateActiveSessions() {
+        fetch('/api/time_control/active_sessions')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateSessionsDisplay(data.sessions);
+                }
+            })
+            .catch(error => console.error('更新活跃会话失败:', error));
+    }
+    
+    function updateSessionsDisplay(sessions) {
+        const container = document.getElementById('active-sessions');
+        container.innerHTML = '';
+        
+        if (sessions.length === 0) {
+            container.innerHTML = `
+                <div class="list-group-item px-0 text-center text-muted">
+                    <i class="fas fa-info-circle me-2"></i>
+                    暂无活跃会话
+                </div>
+            `;
+            return;
+        }
+        
+        sessions.forEach(session => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item px-0';
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-1">
+                            <div class="status-indicator status-online me-2"></div>
+                            <h6 class="mb-0">${session.username}</h6>
+                        </div>
+                        <p class="mb-1 text-muted small">
+                            <i class="fas fa-clock me-1"></i>
+                            在线时长: ${session.duration}
+                        </p>
+                        <p class="mb-1 text-muted small">
+                            <i class="fas fa-desktop me-1"></i>
+                            ${session.computer_name}
+                        </p>
+                        ${session.time_limit ? `
+                        <div class="progress mt-2" style="height: 4px;">
+                            <div class="progress-bar bg-${session.usage_percent > 80 ? 'danger' : session.usage_percent > 60 ? 'warning' : 'success'}" 
+                                 style="width: ${session.usage_percent}%"></div>
+                        </div>
+                        <small class="text-muted">
+                            剩余: ${session.remaining_time}
+                        </small>
+                        ` : ''}
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="warnUser('${session.id}')">发送警告</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="extendTime('${session.id}')">延长时间</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="forceLogout('${session.id}')">强制下线</a></li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    }
+    
+    // 每30秒更新一次活跃会话
+    setInterval(updateActiveSessions, 30000);
+</script>
+{% endblock %}

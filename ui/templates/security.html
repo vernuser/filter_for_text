@@ -1,0 +1,592 @@
+{% extends "base.html" %}
+
+{% block title %}安全管理 - 网络内容安全过滤系统{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+    <!-- 页面标题 -->
+    <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center space-x-3">
+            <div class="p-3 bg-gradient-to-r from-red-500 to-pink-500 rounded-xl shadow-lg">
+                <i class="fas fa-shield-alt text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold text-white">安全管理中心</h1>
+                <p class="text-gray-400">全面保护系统安全</p>
+            </div>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="startFullScan()" 
+                    class="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                <i class="fas fa-search mr-2"></i>全面扫描
+            </button>
+            <button onclick="updateSecurityRules()" 
+                    class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                <i class="fas fa-sync mr-2"></i>更新规则
+            </button>
+            <button onclick="exportSecurityReport()" 
+                    class="px-6 py-3 bg-white/10 backdrop-blur-sm text-white rounded-xl hover:bg-white/20 transition-all duration-300 border border-white/20">
+                <i class="fas fa-download mr-2"></i>导出报告
+            </button>
+        </div>
+    </div>
+
+    <!-- 安全状态概览 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- 安全评分 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                    <i class="fas fa-shield-alt text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-500/20 text-green-400' if security_score >= 80 else 'bg-yellow-500/20 text-yellow-400' if security_score >= 60 else 'bg-red-500/20 text-red-400' }}">
+                        {{ '优秀' if security_score >= 80 else '良好' if security_score >= 60 else '需改进' }}
+                    </span>
+                </div>
+            </div>
+            <h3 class="text-white text-lg font-semibold mb-1">安全评分</h3>
+            <p class="text-3xl font-bold text-white mb-2">{{ security_score or 85 }}/100</p>
+            <p class="text-gray-400 text-sm flex items-center">
+                <i class="fas fa-{{ 'arrow-up text-green-400' if score_trend > 0 else 'arrow-down text-red-400' if score_trend < 0 else 'minus text-gray-400' }} mr-1"></i>
+                {{ score_trend or 0 }}% 较昨日
+            </p>
+        </div>
+
+        <!-- 威胁检测 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-gradient-to-r from-red-500 to-pink-500 rounded-xl">
+                    <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400">
+                        <i class="fas fa-arrow-down mr-1"></i>-25%
+                    </span>
+                </div>
+            </div>
+            <h3 class="text-white text-lg font-semibold mb-1">威胁检测</h3>
+            <p class="text-3xl font-bold text-white mb-2">{{ threat_count or 12 }}</p>
+            <p class="text-gray-400 text-sm">今日发现</p>
+        </div>
+
+        <!-- 文件完整性 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl">
+                    <i class="fas fa-file-shield text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-500/20 text-green-400' if integrity_violations == 0 else 'bg-red-500/20 text-red-400' }}">
+                        {{ integrity_violations or 0 }} 异常
+                    </span>
+                </div>
+            </div>
+            <h3 class="text-white text-lg font-semibold mb-1">文件完整性</h3>
+            <p class="text-3xl font-bold text-white mb-2">{{ integrity_files or 156 }}</p>
+            <p class="text-gray-400 text-sm">监控文件</p>
+        </div>
+
+        <!-- 访问控制 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
+                    <i class="fas fa-key text-white text-xl"></i>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-500/20 text-green-400' if failed_attempts == 0 else 'bg-red-500/20 text-red-400' }}">
+                        {{ failed_attempts or 3 }} 失败
+                    </span>
+                </div>
+            </div>
+            <h3 class="text-white text-lg font-semibold mb-1">访问控制</h3>
+            <p class="text-3xl font-bold text-white mb-2">{{ access_attempts or 89 }}</p>
+            <p class="text-gray-400 text-sm">今日尝试</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- 安全扫描 -->
+        <div class="lg:col-span-2 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-white flex items-center">
+                    <i class="fas fa-search mr-3 text-blue-400"></i>
+                    安全扫描
+                </h2>
+                <div class="flex space-x-2">
+                    <button onclick="startQuickScan()" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-all duration-300">快速扫描</button>
+                    <button onclick="startFullScan()" class="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 transition-all duration-300">全面扫描</button>
+                    <button onclick="startCustomScan()" class="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 transition-all duration-300">自定义</button>
+                </div>
+            </div>
+
+            <!-- 扫描状态 -->
+            <div id="scan-status" class="mb-6 hidden">
+                <div class="flex items-center mb-3">
+                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400 mr-3"></div>
+                    <span id="scan-message" class="text-white">正在扫描...</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                    <div id="scan-progress" class="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- 扫描统计 -->
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-4">扫描统计</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300">已扫描文件</span>
+                            <span class="text-white font-medium" id="scanned-files-count">{{ scan_stats.scanned_files or 0 }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300">发现威胁</span>
+                            <span class="text-red-400 font-medium" id="threats-found">{{ scan_stats.threats_found or 0 }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300">已清理</span>
+                            <span class="text-green-400 font-medium" id="threats-cleaned">{{ scan_stats.threats_cleaned or 0 }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300">隔离文件</span>
+                            <span class="text-yellow-400 font-medium" id="quarantined-files">{{ scan_stats.quarantined or 0 }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-4">扫描历史</h3>
+                    <div class="space-y-3">
+                        {% for scan in recent_scans[:4] %}
+                        <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                            <div>
+                                <p class="text-white text-sm font-medium">{{ scan.type }}</p>
+                                <p class="text-gray-400 text-xs">{{ scan.timestamp }}</p>
+                            </div>
+                            <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-500/20 text-green-400' if scan.status == 'completed' else 'bg-yellow-500/20 text-yellow-400' if scan.status == 'running' else 'bg-red-500/20 text-red-400' }}">
+                                {{ scan.status }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 威胁分析 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <h2 class="text-xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-chart-pie mr-3 text-red-400"></i>
+                威胁分析
+            </h2>
+            <div class="h-48 mb-4">
+                <canvas id="threatChart" class="w-full h-full"></canvas>
+            </div>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                        <span class="text-gray-300 text-sm">恶意软件</span>
+                    </div>
+                    <span class="text-white font-medium">{{ threat_types.malware or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                        <span class="text-gray-300 text-sm">可疑文件</span>
+                    </div>
+                    <span class="text-white font-medium">{{ threat_types.suspicious or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                        <span class="text-gray-300 text-sm">网络攻击</span>
+                    </div>
+                    <span class="text-white font-medium">{{ threat_types.network or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                        <span class="text-gray-300 text-sm">其他</span>
+                    </div>
+                    <span class="text-white font-medium">{{ threat_types.other or 0 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全策略和防护设置 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- 防护策略 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <h2 class="text-xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-cog mr-3 text-green-400"></i>
+                防护策略
+            </h2>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div>
+                        <h3 class="text-white font-medium">实时防护</h3>
+                        <p class="text-gray-400 text-sm">监控文件系统变化</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" {{ 'checked' if security_settings.realtime_protection else '' }}>
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div>
+                        <h3 class="text-white font-medium">自动更新</h3>
+                        <p class="text-gray-400 text-sm">自动更新病毒库</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" {{ 'checked' if security_settings.auto_update else '' }}>
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div>
+                        <h3 class="text-white font-medium">网络防护</h3>
+                        <p class="text-gray-400 text-sm">阻止恶意网络连接</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" {{ 'checked' if security_settings.network_protection else '' }}>
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div>
+                        <h3 class="text-white font-medium">行为分析</h3>
+                        <p class="text-gray-400 text-sm">检测异常行为模式</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" {{ 'checked' if security_settings.behavior_analysis else '' }}>
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 隔离区管理 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-white flex items-center">
+                    <i class="fas fa-lock mr-3 text-yellow-400"></i>
+                    隔离区管理
+                </h2>
+                <button onclick="clearQuarantine()" class="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all duration-300">
+                    <i class="fas fa-trash mr-2"></i>清空
+                </button>
+            </div>
+
+            <div class="space-y-3 max-h-64 overflow-y-auto">
+                {% for item in quarantine_items %}
+                <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2 bg-yellow-500/20 rounded-lg">
+                            <i class="fas fa-file text-yellow-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-white font-medium text-sm">{{ item.filename }}</p>
+                            <p class="text-gray-400 text-xs">{{ item.threat_type }} - {{ item.quarantine_date }}</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="restoreFile('{{ item.id }}')" class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs hover:bg-green-500/30">
+                            恢复
+                        </button>
+                        <button onclick="deleteFile('{{ item.id }}')" class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs hover:bg-red-500/30">
+                            删除
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全日志 -->
+    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold text-white flex items-center">
+                <i class="fas fa-list-alt mr-3 text-purple-400"></i>
+                安全日志
+            </h2>
+            <div class="flex space-x-2">
+                <select class="px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 text-sm">
+                    <option value="all">所有类型</option>
+                    <option value="threat">威胁检测</option>
+                    <option value="scan">扫描记录</option>
+                    <option value="quarantine">隔离操作</option>
+                </select>
+                <button onclick="exportLogs()" class="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all duration-300">
+                    <i class="fas fa-download mr-2"></i>导出
+                </button>
+            </div>
+        </div>
+        
+        <div class="space-y-3 max-h-64 overflow-y-auto">
+            {% for log in security_logs %}
+            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 rounded-lg {{ 'bg-red-500/20' if log.level == 'critical' else 'bg-yellow-500/20' if log.level == 'warning' else 'bg-blue-500/20' }}">
+                        <i class="fas {{ 'fa-exclamation-triangle' if log.level == 'critical' else 'fa-exclamation-circle' if log.level == 'warning' else 'fa-info-circle' }} 
+                                  {{ 'text-red-400' if log.level == 'critical' else 'text-yellow-400' if log.level == 'warning' else 'text-blue-400' }}"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">{{ log.message }}</p>
+                        <p class="text-gray-400 text-sm">{{ log.source }} - {{ log.action }}</p>
+                    </div>
+                </div>
+                <span class="text-gray-400 text-sm">{{ log.timestamp }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+// 威胁分析图表
+let threatChart;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeThreatChart();
+});
+
+function initializeThreatChart() {
+    const threatCtx = document.getElementById('threatChart').getContext('2d');
+    threatChart = new Chart(threatCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['恶意软件', '可疑文件', '网络攻击', '其他'],
+            datasets: [{
+                data: [
+                    {{ threat_types.malware or 0 }},
+                    {{ threat_types.suspicious or 0 }},
+                    {{ threat_types.network or 0 }},
+                    {{ threat_types.other or 0 }}
+                ],
+                backgroundColor: [
+                    'rgb(239, 68, 68)',
+                    'rgb(245, 158, 11)',
+                    'rgb(249, 115, 22)',
+                    'rgb(168, 85, 247)'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+// 扫描功能
+function startQuickScan() {
+    startScan('quick');
+}
+
+function startFullScan() {
+    startScan('full');
+}
+
+function startCustomScan() {
+    // 显示自定义扫描对话框
+    showToast('自定义扫描功能开发中', 'info');
+}
+
+function startScan(type) {
+    const scanStatus = document.getElementById('scan-status');
+    const scanMessage = document.getElementById('scan-message');
+    const scanProgress = document.getElementById('scan-progress');
+    
+    scanStatus.classList.remove('hidden');
+    scanMessage.textContent = `正在进行${type === 'quick' ? '快速' : '全面'}扫描...`;
+    
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            scanMessage.textContent = '扫描完成';
+            setTimeout(() => {
+                scanStatus.classList.add('hidden');
+                showToast('扫描完成', 'success');
+                updateScanStats();
+            }, 2000);
+        }
+        scanProgress.style.width = progress + '%';
+    }, 500);
+}
+
+function updateScanStats() {
+    // 更新扫描统计数据
+    fetch('/api/security/scan_stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('scanned-files-count').textContent = data.scanned_files;
+                document.getElementById('threats-found').textContent = data.threats_found;
+                document.getElementById('threats-cleaned').textContent = data.threats_cleaned;
+                document.getElementById('quarantined-files').textContent = data.quarantined;
+            }
+        })
+        .catch(error => console.error('Error updating scan stats:', error));
+}
+
+function updateSecurityRules() {
+    showToast('正在更新安全规则...', 'info');
+    
+    fetch('/api/security/update_rules', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('安全规则更新成功', 'success');
+        } else {
+            showToast('更新失败: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('更新失败', 'error');
+    });
+}
+
+function exportSecurityReport() {
+    fetch('/api/security/export_report', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'security_report_' + new Date().toISOString().slice(0, 10) + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showToast('报告导出成功', 'success');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('导出失败', 'error');
+    });
+}
+
+// 隔离区管理
+function clearQuarantine() {
+    if (confirm('确定要清空隔离区吗？这将永久删除所有隔离文件。')) {
+        fetch('/api/security/clear_quarantine', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('隔离区已清空', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('清空失败', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('操作失败', 'error');
+        });
+    }
+}
+
+function restoreFile(fileId) {
+    if (confirm('确定要恢复这个文件吗？')) {
+        fetch(`/api/security/restore_file/${fileId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('文件已恢复', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('恢复失败: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('操作失败', 'error');
+        });
+    }
+}
+
+function deleteFile(fileId) {
+    if (confirm('确定要永久删除这个文件吗？此操作无法撤销。')) {
+        fetch(`/api/security/delete_file/${fileId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('文件已删除', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('删除失败: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('操作失败', 'error');
+        });
+    }
+}
+
+function exportLogs() {
+    const logType = document.querySelector('select').value;
+    
+    fetch(`/api/security/export_logs?type=${logType}`, {
+        method: 'POST'
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `security_logs_${logType}_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showToast('日志导出成功', 'success');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('导出失败', 'error');
+    });
+}
+
+// 防护策略切换
+document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const setting = this.closest('.flex').querySelector('h3').textContent;
+        const enabled = this.checked;
+        
+        // 这里可以添加保存设置的API调用
+        showToast(`${setting}已${enabled ? '启用' : '禁用'}`, 'success');
+    });
+});
+</script>
+{% endblock %}

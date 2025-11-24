@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>示例样本 - Fairy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+    <div class="dashboard-container" style="padding: 24px;">
+        <div class="header">
+            <h1 class="title">示例样本</h1>
+            <div class="user-info">
+                <span>欢迎，{{ username }}</span>
+                <a href="/smoke" class="logout-btn">返回测试页</a>
+            </div>
+        </div>
+        <div style="display:flex; gap:24px; align-items:flex-start;">
+            <div style="flex:1;">
+                <h3 id="sampleTitle">文本示例</h3>
+                <pre id="sampleList" style="background:#0f1226; color:#cfd3ff; padding:12px; border-radius:12px; min-height:240px;"></pre>
+                <div style="margin-top:12px; display:flex; gap:8px;">
+                    <button class="analyze-btn" id="copyBtn"><span>复制到剪贴板</span><div class="btn-glow"></div></button>
+                    <a class="analyze-btn" id="sendBtn"><span>发送到测试页</span><div class="btn-glow"></div></a>
+                </div>
+            </div>
+            <div style="width:240px;">
+                <h3>切换分类</h3>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <button class="reset-btn" onclick="switchCat('text')">文本示例</button>
+                    <button class="reset-btn" onclick="switchCat('url')">网址示例</button>
+                    <button class="reset-btn" onclick="switchCat('ip')">IP示例</button>
+                    <button class="reset-btn" onclick="switchCat('domain')">域名示例</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    const samples = {
+        text: [
+            "您的银行账户已被冻结，请访问 secure-verify.io 进行验证，或点击 bit.ly/abc123",
+            "请立即输入验证码完成登录，否则账户将被限制访问",
+            "下载最新系统工具并更新，点击链接 http://update-secure.example.com",
+            "泄露示例：api_key=SECRET123，email test@example.com"
+        ],
+        url: [
+            "http://phishing-site.net/login",
+            "http://192.168.1.100:8080/download?id=1",
+            "https://tinyurl.com/abc123",
+            "http://secure-verify.io/auth"
+        ],
+        ip: [
+            "8.8.8.8",
+            "123.45.67.89",
+            "192.168.1.100"
+        ],
+        domain: [
+            "phishing-site.net",
+            "secure-verify.io",
+            "example-malware.com"
+        ]
+    };
+    let current = 'text';
+    function render(){
+        document.getElementById('sampleTitle').textContent = ({text:'文本示例',url:'网址示例',ip:'IP示例',domain:'域名示例'})[current];
+        document.getElementById('sampleList').textContent = samples[current].join('\n');
+        const prefill = encodeURIComponent(samples[current].join('\n'));
+        document.getElementById('sendBtn').setAttribute('href', '/smoke?type='+current+'&prefill='+prefill);
+    }
+    function switchCat(t){ current = t; render(); }
+    document.getElementById('copyBtn').addEventListener('click', async ()=>{
+        try{ await navigator.clipboard.writeText(samples[current].join('\n')); }catch(e){}
+    });
+    render();
+    </script>
+</body>
+</html>

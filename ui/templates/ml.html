@@ -1,0 +1,871 @@
+{% extends "base.html" %}
+
+{% block title %}机器学习 - 网络内容安全过滤系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-brain me-2"></i>
+        机器学习管理
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="trainModel()">
+                <i class="fas fa-play me-1"></i>开始训练
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="updateFeatures()">
+                <i class="fas fa-sync-alt me-1"></i>更新特征库
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-info" onclick="exportModel()">
+                <i class="fas fa-download me-1"></i>导出模型
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 模型状态卡片 -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">模型准确率</h6>
+                        <h3 class="mb-0">{{ model_stats.accuracy or 0 }}%</h3>
+                        <small class="text-light">文本分类模型</small>
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-bullseye fa-2x"></i>
+                        <div class="mt-1">
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-arrow-up"></i> +2.3%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">训练样本</h6>
+                        <h3 class="mb-0">{{ model_stats.training_samples or 0 }}</h3>
+                        <small class="text-light">总数量</small>
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-database fa-2x"></i>
+                        <div class="mt-1">
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-plus"></i> +156
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">特征数量</h6>
+                        <h3 class="mb-0">{{ model_stats.features or 0 }}</h3>
+                        <small class="text-light">活跃特征</small>
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-cogs fa-2x"></i>
+                        <div class="mt-1">
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-arrow-up"></i> +23
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">预测次数</h6>
+                        <h3 class="mb-0">{{ model_stats.predictions or 0 }}</h3>
+                        <small class="text-light">今日</small>
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-chart-line fa-2x"></i>
+                        <div class="mt-1">
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-arrow-up"></i> +12%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 模型训练 -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cog me-2"></i>
+                        模型训练
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active" data-model="text">文本分类</button>
+                        <button class="btn btn-outline-secondary" data-model="url">URL分类</button>
+                        <button class="btn btn-outline-secondary" data-model="email">邮件分类</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="training-status" class="mb-3" style="display: none;">
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-3" role="status">
+                                <span class="visually-hidden">训练中...</span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <strong>模型训练中...</strong>
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         id="training-progress" style="width: 0%"></div>
+                                </div>
+                                <small class="text-muted" id="training-info">正在准备训练数据...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>训练参数</h6>
+                        <form id="training-form">
+                            <div class="mb-3">
+                                <label class="form-label">算法选择</label>
+                                <select class="form-select" name="algorithm">
+                                    <option value="svm">支持向量机 (SVM)</option>
+                                    <option value="random_forest">随机森林</option>
+                                    <option value="naive_bayes">朴素贝叶斯</option>
+                                    <option value="logistic_regression">逻辑回归</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">训练集比例</label>
+                                <input type="range" class="form-range" name="train_ratio" 
+                                       min="0.6" max="0.9" step="0.05" value="0.8">
+                                <div class="d-flex justify-content-between">
+                                    <small>60%</small>
+                                    <small id="train-ratio-value">80%</small>
+                                    <small>90%</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">交叉验证折数</label>
+                                <select class="form-select" name="cv_folds">
+                                    <option value="3">3折</option>
+                                    <option value="5" selected>5折</option>
+                                    <option value="10">10折</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="auto_tune" checked>
+                                    <label class="form-check-label">
+                                        自动调参
+                                    </label>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>训练历史</h6>
+                        <canvas id="trainingHistoryChart" height="200"></canvas>
+                    </div>
+                </div>
+                
+                <div class="text-end mt-3">
+                    <button class="btn btn-primary" onclick="startTraining()">
+                        <i class="fas fa-play me-2"></i>开始训练
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 模型性能 -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    模型性能
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>准确率 (Accuracy)</span>
+                        <span class="fw-bold">{{ model_performance.accuracy or 0 }}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-success" style="width: {{ model_performance.accuracy or 0 }}%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>精确率 (Precision)</span>
+                        <span class="fw-bold">{{ model_performance.precision or 0 }}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-info" style="width: {{ model_performance.precision or 0 }}%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>召回率 (Recall)</span>
+                        <span class="fw-bold">{{ model_performance.recall or 0 }}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-warning" style="width: {{ model_performance.recall or 0 }}%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>F1分数 (F1-Score)</span>
+                        <span class="fw-bold">{{ model_performance.f1_score or 0 }}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-primary" style="width: {{ model_performance.f1_score or 0 }}%"></div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="text-center">
+                    <small class="text-muted">
+                        最后更新: {{ model_performance.last_updated or '从未' }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 样本管理 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-database me-2"></i>
+                        训练样本管理
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addSampleModal">
+                        <i class="fas fa-plus me-1"></i>添加样本
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 class="text-success">{{ sample_stats.positive or 0 }}</h4>
+                            <small class="text-muted">正样本</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 class="text-danger">{{ sample_stats.negative or 0 }}</h4>
+                            <small class="text-muted">负样本</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 class="text-info">{{ sample_stats.total or 0 }}</h4>
+                            <small class="text-muted">总样本</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <canvas id="sampleDistributionChart" height="150"></canvas>
+                
+                <div class="mt-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="搜索样本..." id="sample-search">
+                        <button class="btn btn-outline-secondary" onclick="searchSamples()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>内容</th>
+                                <th>标签</th>
+                                <th>来源</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="samples-table">
+                            {% for sample in recent_samples %}
+                            <tr>
+                                <td>
+                                    <span class="text-truncate d-inline-block" style="max-width: 200px;" 
+                                          title="{{ sample.content }}">
+                                        {{ sample.content[:50] }}...
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if sample.label == 1 else 'danger' }}">
+                                        {{ '恶意' if sample.label == 1 else '正常' }}
+                                    </span>
+                                </td>
+                                <td>{{ sample.source }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="editSample({{ sample.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deleteSample({{ sample.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 特征库管理 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-puzzle-piece me-2"></i>
+                        特征库管理
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-success" onclick="updateFeatureLibrary()">
+                            <i class="fas fa-sync-alt me-1"></i>更新
+                        </button>
+                        <button class="btn btn-outline-info" onclick="optimizeFeatures()">
+                            <i class="fas fa-magic me-1"></i>优化
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <h4 class="text-primary">{{ feature_stats.total_features or 0 }}</h4>
+                            <small class="text-muted">总特征数</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <h4 class="text-success">{{ feature_stats.active_features or 0 }}</h4>
+                            <small class="text-muted">活跃特征</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>特征类型分布</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>文本特征</span>
+                            <span>{{ feature_stats.text_features or 0 }}</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-primary" 
+                                 style="width: {{ (feature_stats.text_features or 0) / (feature_stats.total_features or 1) * 100 }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>URL特征</span>
+                            <span>{{ feature_stats.url_features or 0 }}</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-success" 
+                                 style="width: {{ (feature_stats.url_features or 0) / (feature_stats.total_features or 1) * 100 }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>邮件特征</span>
+                            <span>{{ feature_stats.email_features or 0 }}</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-warning" 
+                                 style="width: {{ (feature_stats.email_features or 0) / (feature_stats.total_features or 1) * 100 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>更新状态</h6>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>最后更新</span>
+                        <span class="text-muted">{{ feature_stats.last_update or '从未' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>下次更新</span>
+                        <span class="text-muted">{{ feature_stats.next_update or '未计划' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>更新状态</span>
+                        <span class="badge bg-{{ 'success' if feature_stats.update_status == 'success' else 'warning' if feature_stats.update_status == 'running' else 'danger' }}">
+                            {{ feature_stats.update_status or '未知' }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <button class="btn btn-outline-primary btn-sm" onclick="viewFeatureDetails()">
+                        <i class="fas fa-eye me-2"></i>查看详情
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加样本模态框 -->
+<div class="modal fade" id="addSampleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加训练样本</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-sample-form">
+                    <div class="mb-3">
+                        <label class="form-label">样本类型</label>
+                        <select class="form-select" name="sample_type" required>
+                            <option value="">请选择类型</option>
+                            <option value="text">文本内容</option>
+                            <option value="url">URL地址</option>
+                            <option value="email">邮件内容</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">样本内容</label>
+                        <textarea class="form-control" name="content" rows="4" 
+                                  placeholder="请输入样本内容..." required></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">标签</label>
+                        <select class="form-select" name="label" required>
+                            <option value="">请选择标签</option>
+                            <option value="0">正常</option>
+                            <option value="1">恶意</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">来源</label>
+                        <input type="text" class="form-control" name="source" 
+                               placeholder="样本来源（可选）">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addSample()">添加样本</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 训练历史图表
+    const trainingHistoryCtx = document.getElementById('trainingHistoryChart').getContext('2d');
+    const trainingHistoryChart = new Chart(trainingHistoryCtx, {
+        type: 'line',
+        data: {
+            labels: {{ training_history_labels | tojson | safe }},
+            datasets: [{
+                label: '准确率',
+                data: {{ training_history_accuracy | tojson | safe }},
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                tension: 0.4
+            }, {
+                label: '损失',
+                data: {{ training_history_loss | tojson | safe }},
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                tension: 0.4,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            }
+        }
+    });
+    
+    // 样本分布图表
+    const sampleDistributionCtx = document.getElementById('sampleDistributionChart').getContext('2d');
+    const sampleDistributionChart = new Chart(sampleDistributionCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['正样本', '负样本'],
+            datasets: [{
+                data: [{{ sample_stats.positive or 0 }}, {{ sample_stats.negative or 0 }}],
+                backgroundColor: ['#28a745', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // 训练比例滑块
+    const trainRatioSlider = document.querySelector('input[name="train_ratio"]');
+    const trainRatioValue = document.getElementById('train-ratio-value');
+    
+    trainRatioSlider.addEventListener('input', function() {
+        trainRatioValue.textContent = Math.round(this.value * 100) + '%';
+    });
+    
+    // 模型类型切换
+    document.querySelectorAll('[data-model]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('[data-model]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            const modelType = this.dataset.model;
+            loadModelData(modelType);
+        });
+    });
+    
+    function loadModelData(modelType) {
+        fetch(`/api/ml/model_data?type=${modelType}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新图表和统计数据
+                    updateModelDisplay(data);
+                }
+            })
+            .catch(error => console.error('加载模型数据失败:', error));
+    }
+    
+    function updateModelDisplay(data) {
+        // 更新训练历史图表
+        trainingHistoryChart.data.labels = data.history_labels;
+        trainingHistoryChart.data.datasets[0].data = data.history_accuracy;
+        trainingHistoryChart.data.datasets[1].data = data.history_loss;
+        trainingHistoryChart.update();
+        
+        // 更新样本分布图表
+        sampleDistributionChart.data.datasets[0].data = [data.positive_samples, data.negative_samples];
+        sampleDistributionChart.update();
+    }
+    
+    // 开始训练
+    function startTraining() {
+        const form = document.getElementById('training-form');
+        const formData = new FormData(form);
+        const modelType = document.querySelector('[data-model].active').dataset.model;
+        
+        const trainingParams = {
+            model_type: modelType,
+            algorithm: formData.get('algorithm'),
+            train_ratio: parseFloat(formData.get('train_ratio')),
+            cv_folds: parseInt(formData.get('cv_folds')),
+            auto_tune: formData.get('auto_tune') === 'on'
+        };
+        
+        // 显示训练状态
+        document.getElementById('training-status').style.display = 'block';
+        
+        fetch('/api/ml/train', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(trainingParams)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('训练已开始', 'success');
+                monitorTraining(data.task_id);
+            } else {
+                showToast('训练启动失败: ' + data.message, 'danger');
+                document.getElementById('training-status').style.display = 'none';
+            }
+        })
+        .catch(error => {
+            showToast('训练启动失败: ' + error.message, 'danger');
+            document.getElementById('training-status').style.display = 'none';
+        });
+    }
+    
+    function monitorTraining(taskId) {
+        const progressBar = document.getElementById('training-progress');
+        const trainingInfo = document.getElementById('training-info');
+        
+        const checkProgress = () => {
+            fetch(`/api/ml/training_status/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        progressBar.style.width = data.progress + '%';
+                        trainingInfo.textContent = data.status;
+                        
+                        if (data.completed) {
+                            document.getElementById('training-status').style.display = 'none';
+                            showToast('模型训练完成', 'success');
+                            location.reload(); // 刷新页面显示新结果
+                        } else {
+                            setTimeout(checkProgress, 2000); // 2秒后再次检查
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('检查训练状态失败:', error);
+                    setTimeout(checkProgress, 5000); // 出错时5秒后重试
+                });
+        };
+        
+        checkProgress();
+    }
+    
+    // 更新特征库
+    function updateFeatureLibrary() {
+        confirmAction('确定要更新特征库吗？这可能需要一些时间。', function() {
+            fetch('/api/ml/update_features', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('特征库更新已开始', 'success');
+                    } else {
+                        showToast('更新失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('更新失败: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // 优化特征
+    function optimizeFeatures() {
+        confirmAction('确定要优化特征库吗？这将删除低权重特征。', function() {
+            fetch('/api/ml/optimize_features', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('特征优化完成', 'success');
+                        location.reload();
+                    } else {
+                        showToast('优化失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('优化失败: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // 添加样本
+    function addSample() {
+        const form = document.getElementById('add-sample-form');
+        const formData = new FormData(form);
+        
+        const sampleData = {
+            sample_type: formData.get('sample_type'),
+            content: formData.get('content'),
+            label: parseInt(formData.get('label')),
+            source: formData.get('source') || 'manual'
+        };
+        
+        fetch('/api/ml/add_sample', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(sampleData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('样本添加成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('addSampleModal')).hide();
+                form.reset();
+                location.reload();
+            } else {
+                showToast('添加失败: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            showToast('添加失败: ' + error.message, 'danger');
+        });
+    }
+    
+    // 搜索样本
+    function searchSamples() {
+        const query = document.getElementById('sample-search').value;
+        
+        fetch(`/api/ml/search_samples?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateSamplesTable(data.samples);
+                } else {
+                    showToast('搜索失败: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                showToast('搜索失败: ' + error.message, 'danger');
+            });
+    }
+    
+    function updateSamplesTable(samples) {
+        const tbody = document.getElementById('samples-table');
+        tbody.innerHTML = '';
+        
+        samples.forEach(sample => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <span class="text-truncate d-inline-block" style="max-width: 200px;" 
+                          title="${sample.content}">
+                        ${sample.content.substring(0, 50)}...
+                    </span>
+                </td>
+                <td>
+                    <span class="badge bg-${sample.label === 1 ? 'success' : 'danger'}">
+                        ${sample.label === 1 ? '恶意' : '正常'}
+                    </span>
+                </td>
+                <td>${sample.source}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="editSample(${sample.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteSample(${sample.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+    
+    // 编辑样本
+    function editSample(sampleId) {
+        // 实现编辑样本功能
+        showToast('编辑功能开发中', 'info');
+    }
+    
+    // 删除样本
+    function deleteSample(sampleId) {
+        confirmAction('确定要删除这个样本吗？', function() {
+            fetch(`/api/ml/samples/${sampleId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('样本删除成功', 'success');
+                        location.reload();
+                    } else {
+                        showToast('删除失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('删除失败: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // 查看特征详情
+    function viewFeatureDetails() {
+        window.open('/ml/features', '_blank');
+    }
+    
+    // 导出模型
+    function exportModel() {
+        const modelType = document.querySelector('[data-model].active').dataset.model;
+        window.open(`/api/ml/export_model?type=${modelType}`, '_blank');
+    }
+    
+    // 训练模型快捷函数
+    function trainModel() {
+        startTraining();
+    }
+    
+    // 更新特征快捷函数
+    function updateFeatures() {
+        updateFeatureLibrary();
+    }
+</script>
+{% endblock %}

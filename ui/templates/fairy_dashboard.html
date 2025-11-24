@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fairy Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fairy_dashboard.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- 背景粒子效果 -->
+        <div class="particles-bg"></div>
+        
+        <!-- 左下角Fairy模型 -->
+        <div class="fairy-assistant" id="fairyAssistant">
+            <div class="fairy-model">
+                <img src="{{ url_for('static', filename='images/fairy.svg') }}" alt="Fairy" class="fairy-image">
+                <div class="fairy-pulse"></div>
+            </div>
+            
+            <!-- 旋转菜单 -->
+            <div class="rotation-menu" id="rotationMenu">
+                <div class="menu-item" data-type="url">
+                    <div class="menu-icon">🌐</div>
+                    <div class="menu-text">URL</div>
+                </div>
+                <div class="menu-item" data-type="file">
+                    <div class="menu-icon">📁</div>
+                    <div class="menu-text">文件</div>
+                </div>
+                <div class="menu-item" data-type="text">
+                    <div class="menu-icon">📝</div>
+                    <div class="menu-text">文本内容</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <!-- 顶部标题 -->
+            <div class="header">
+                <h1 class="title">Fairy 安全分析系统</h1>
+                <div class="user-info">
+                    <span>欢迎，{{ session.user_id }}</span>
+                    <a href="{{ url_for('logout') }}" class="logout-btn">退出</a>
+                </div>
+            </div>
+            
+            <!-- 中央输入区域 -->
+            <div class="input-section" id="inputSection">
+                <div class="input-container">
+                    <div class="input-header">
+                        <h2 id="inputTitle">选择分析类型</h2>
+                        <p id="inputSubtitle">点击左下角的Fairy选择要分析的内容类型</p>
+                    </div>
+                    
+                    <!-- URL输入 -->
+                    <div class="input-form url-form" id="urlForm" style="display: none;">
+                        <input type="url" id="urlInput" placeholder="请输入要分析的URL地址..." class="main-input">
+                        <button onclick="analyzeContent('url')" class="analyze-btn">
+                            <span>分析URL</span>
+                            <div class="btn-glow"></div>
+                        </button>
+                    </div>
+                    
+                    <!-- 文件上传 -->
+                    <div class="input-form file-form" id="fileForm" style="display: none;">
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <div class="upload-icon">📁</div>
+                            <p>拖拽文件到此处或点击选择文件</p>
+                            <input type="file" id="fileInput" multiple accept=".txt,.doc,.docx,.pdf">
+                        </div>
+                        <button onclick="analyzeContent('file')" class="analyze-btn">
+                            <span>分析文件</span>
+                            <div class="btn-glow"></div>
+                        </button>
+                    </div>
+                    
+                    <!-- 文本输入 -->
+                    <div class="input-form text-form" id="textForm" style="display: none;">
+                        <textarea id="textInput" placeholder="请输入要分析的文本内容..." class="main-textarea"></textarea>
+                        <button onclick="analyzeContent('text')" class="analyze-btn">
+                            <span>分析文本</span>
+                            <div class="btn-glow"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 分析结果区域 -->
+            <div class="analysis-section" id="analysisSection" style="display: none;">
+                <div class="fairy-center">
+                    <div class="fairy-analysis-model">
+                        <img src="{{ url_for('static', filename='images/fairy.svg') }}" alt="Fairy" class="analysis-fairy">
+                    </div>
+                    
+                    <!-- 连接线和结果节点 -->
+                    <div class="connection-lines" id="connectionLines"></div>
+                    <div class="result-nodes" id="resultNodes"></div>
+                </div>
+                
+                <!-- 详细结果面板 -->
+                <div class="result-panel" id="resultPanel">
+                    <div class="panel-header">
+                        <h3>分析结果</h3>
+                        <button onclick="resetAnalysis()" class="reset-btn">重新分析</button>
+                    </div>
+                    <div class="panel-content" id="panelContent"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 系统状态指示器 -->
+        <div class="system-status">
+            <div class="status-item">
+                <span class="status-label">系统状态:</span>
+                <span class="status-value online">在线</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">安全等级:</span>
+                <span class="status-value high">高</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">连接状态:</span>
+                <span class="status-value secure">安全</span>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/fairy_dashboard.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>集成测试 - Fairy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+    <div class="dashboard-container" style="padding: 24px;">
+        <div class="header">
+            <h1 class="title">集成测试</h1>
+            <div class="user-info">
+                <span>欢迎，{{ username }}</span>
+                <a href="/dashboard" class="logout-btn">返回仪表盘</a>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;">
+            <div style="flex:1; min-width:360px;">
+                <!-- 去掉测试类型选择，自动识别每行类型 -->
+
+                <h3 style="margin-top:16px;">输入内容（支持一次多个，按行分隔）</h3>
+                <textarea id="testContent" class="main-input text-area" rows="6" placeholder="在此输入待分析内容，每行一条..."></textarea>
+                <button id="runBtn" class="analyze-btn" style="margin-top:12px;">
+                    <span>运行测试</span>
+                    <div class="btn-glow"></div>
+                </button>
+            </div>
+            
+            <div style="flex:1; min-width:360px;">
+                <h3>示例样本</h3>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="reset-btn" onclick="loadSample('text')">文本示例</button>
+                    <button class="reset-btn" onclick="loadSample('url')">网址示例</button>
+                    <button class="reset-btn" onclick="loadSample('ip')">IP示例</button>
+                    <button class="reset-btn" onclick="loadSample('domain')">域名示例</button>
+                </div>
+                <pre id="sampleBox" style="background:#0f1226; color:#cfd3ff; padding:12px; border-radius:12px; margin-top:8px; white-space:pre-wrap; min-height:100px;"></pre>
+            </div>
+        </div>
+
+        <div style="margin-top:24px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <h3>结果</h3>
+                <a href="/validation" class="logout-btn">前往自学习与安全验证</a>
+            </div>
+            <div id="resultBox" style="background:#0f1226; color:#cfd3ff; padding:12px; border-radius:12px; white-space:pre-wrap; font-family:Consolas,Monaco,monospace;"></div>
+        </div>
+
+        
+    </div>
+
+    <script>
+    const samples = {
+        text: [
+            "您的银行账户已被冻结，请访问 secure-verify.io 进行验证，或点击 bit.ly/abc123",
+            "请立即输入验证码完成登录，否则账户将被限制访问",
+            "下载最新系统工具并更新，点击链接 http://update-secure.example.com",
+            "泄露示例：api_key=SECRET123，email test@example.com"
+        ],
+        url: [
+            "http://phishing-site.net/login",
+            "http://192.168.1.100:8080/download?id=1",
+            "https://tinyurl.com/abc123",
+            "http://secure-verify.io/auth"
+        ],
+        ip: [
+            "8.8.8.8",
+            "123.45.67.89",
+            "192.168.1.100"
+        ],
+        domain: [
+            "phishing-site.net",
+            "secure-verify.io",
+            "example-malware.com"
+        ]
+    };
+    function loadSample(t){
+        const list = samples[t] || [];
+        const preview = Array.isArray(list) ? list.join('\n') : String(list);
+        const area = document.getElementById('testContent');
+        const box = document.getElementById('sampleBox');
+        if(area) area.value = preview;
+        if(box) box.textContent = preview;
+    }
+        document.getElementById('runBtn').addEventListener('click', async () => {
+        const raw = document.getElementById('testContent').value;
+        const items = raw.split(/\n+/).map(s=>s.trim()).filter(s=>s.length>0);
+        const detectType = (s)=>{
+            if(/^[0-9]{1,3}(\.[0-9]{1,3}){3}$/.test(s)) return 'ip';
+            if(/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(s) && !/^https?:\/\//i.test(s)) return 'domain';
+            if(/https?:\/\//i.test(s)) return 'url';
+            return 'text';
+        };
+        const lines = [];
+        let idx = 1;
+        for(const c of items){
+            const t = detectType(c);
+            const resp = await fetch('/api/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type: t, content: c })});
+            let txt = await resp.text();
+            let obj; try{ obj = JSON.parse(txt); }catch(e){}
+            lines.push(`第${idx}条输入：${c}`);
+            if(obj && obj.results){
+                const r = obj.results[0] || {};
+                const name = r.name || '分析';
+                const desc = r.description || '';
+                const score = r.score!==undefined ? r.score : (obj.score||'');
+                const status = r.status || (obj.status||'');
+                lines.push(`结论：${name} | 状态：${status} | 分数：${score}`);
+                if(desc) lines.push(`说明：${desc}`);
+            } else {
+                lines.push(txt);
+            }
+            lines.push('');
+            idx++;
+        }
+        document.getElementById('resultBox').textContent = lines.join('\n');
+    });
+
+    async function learnAddSamples(){
+        const lines = [];
+        for(const k of Object.keys(samples)){
+            for(const v of samples[k]) lines.push({type:k,content:v,label:1});
+        }
+        const extra = (document.getElementById('learnContent').value||'').split(/\n+/).map(s=>s.trim()).filter(s=>s.length>0);
+        for(const v of extra){ lines.push({type:'text',content:v,label:1}); }
+        let ok = 0;
+        for(const p of lines){
+            const resp = await fetch('/api/learn/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(p)});
+            try{ const j = await resp.json(); if(j&&j.success) ok++; }catch(e){}
+        }
+        document.getElementById('learnBox').textContent = `已添加样本：${ok}/${lines.length}`;
+    }
+    async function learnTrain(){
+        const resp = await fetch('/api/learn/train', { method:'POST' });
+        const txt = await resp.text();
+        let obj; try { obj = JSON.parse(txt); } catch(e) {}
+        if(!obj){ document.getElementById('learnBox').textContent = txt; return; }
+        const r = obj.results || (obj.result && obj.result.results) || {};
+        const lines = [];
+        const ok = (obj.success !== undefined ? obj.success : (obj.result && obj.result.success)) ? true : false;
+        lines.push(`总体训练：${ok ? '成功' : '失败'}`);
+        if(r.text_classifier){
+            const t = r.text_classifier;
+            lines.push(`文本分类器：${t.success ? '成功' : '失败'}`);
+            if(t.accuracy !== undefined) lines.push(`准确率：${(t.accuracy*100).toFixed(1)}%`);
+            if(t.training_samples !== undefined) lines.push(`样本数：${t.training_samples}`);
+            const msg = t.message || t.error;
+            if(msg){
+                let zh = msg;
+                if(/y has only 1 member|y contains 1 class|minimum number of groups/i.test(msg)){
+                    zh = '样本类别不足：至少需要“正常”和“恶意”两类，并且每类不少于2条样本';
+                }
+                lines.push(`原因：${zh}`);
+            }
+        }
+        if(r.url_classifier){
+            const u = r.url_classifier;
+            lines.push(`网址分类器：${u.success ? '成功' : '失败'}`);
+            if(u.accuracy !== undefined) lines.push(`准确率：${(u.accuracy*100).toFixed(1)}%`);
+            if(u.training_samples !== undefined) lines.push(`样本数：${u.training_samples}`);
+            const msg = u.message || u.error;
+            if(msg){
+                let zh = msg;
+                if(/y has only 1 member|y contains 1 class|minimum number of groups/i.test(msg)){
+                    zh = '样本类别不足：至少需要“正常”和“恶意”两类，并且每类不少于2条样本';
+                }
+                lines.push(`原因：${zh}`);
+            }
+        }
+        document.getElementById('learnBox').textContent = lines.join('\n');
+    }
+    async function learnStatus(){
+        const resp = await fetch('/api/learn/status');
+        const txt = await resp.text();
+        let obj; try { obj = JSON.parse(txt); } catch(e) {}
+        if(!obj){ document.getElementById('learnBox').textContent = txt; return; }
+        const lines = [];
+        const stats = obj.sample_statistics || [];
+        const mp = obj.model_performance || [];
+        lines.push('样本统计：');
+        if(stats.length){
+            for(const s of stats){
+                const type = s[0];
+                const lbl = s[1];
+                const cnt = s[2];
+                lines.push(`- ${type}：${lbl===1?'恶意':'正常'} ${cnt} 条`);
+            }
+        } else {
+            lines.push('- 暂无样本统计');
+        }
+        lines.push('最近模型性能：');
+        if(mp.length){
+            const m = mp[0];
+            lines.push(`- 模型：${m[0]}，准确率：${((m[1]||0)*100).toFixed(1)}%，训练样本：${m[2]}`);
+        } else {
+            lines.push('- 暂无性能记录');
+        }
+        document.getElementById('learnBox').textContent = lines.join('\n');
+    }
+    async function blacklistManual(){
+        const box = document.getElementById('blacklistBox');
+        box.textContent = '开始手动更新...';
+        const startResp = await fetch('/api/blacklist/manual/start', { method:'POST' });
+        if(!startResp.ok){
+            box.textContent = '更新接口不可用';
+            return;
+        }
+        // 立即拉一次日志
+        const first = await fetch('/api/blacklist/manual/logs');
+        if(first.ok){
+            const ftxt = await first.text(); let fobj; try{ fobj = JSON.parse(ftxt);}catch(e){}
+            if(fobj){ box.textContent = (fobj.logs||[]).join('\n'); }
+        }
+        let timer = setInterval(async ()=>{
+            const resp = await fetch('/api/blacklist/manual/logs');
+            if(!resp.ok){ clearInterval(timer); return; }
+            const txt = await resp.text(); let obj; try{ obj = JSON.parse(txt);}catch(e){}
+            if(!obj){ box.textContent = txt; return; }
+            const lines = [];
+            for(const line of (obj.logs||[])) lines.push(line);
+            if(!obj.running){ lines.push(`合计添加：${obj.total_added||0} 条`); clearInterval(timer); }
+            box.textContent = lines.join('\n');
+        }, 1000);
+    }
+    async function blacklistStatus(){
+        const resp = await fetch('/api/blacklist/status');
+        const txt = await resp.text();
+        let obj; try { obj = JSON.parse(txt); } catch(e) {}
+        if(!obj){ document.getElementById('blacklistBox').textContent = txt; return; }
+        const s = obj.status || {};
+        const lines = [];
+        lines.push('黑名单状态：');
+        lines.push(`- 自动更新：${s.auto_update_enabled ? '开启' : '关闭'}`);
+        lines.push(`- 网址规则：${(s.url||0)} 条`);
+        lines.push(`- 文本模式：${(s.text_pattern||0)} 条`);
+        lines.push(`- 上次成功率：${((s.last_success_rate||0)*100).toFixed(1)}%`);
+        lines.push(`- 上次更新时间：${s.last_update||'未知'}`);
+        document.getElementById('blacklistBox').textContent = lines.join('\n');
+    }
+    async function integrityMock(){
+        const resp = await fetch('/api/security/integrity/mock', { method:'POST' });
+        const txt = await resp.text();
+        let obj; try { obj = JSON.parse(txt); } catch(e) {}
+        if(!obj){ document.getElementById('integrityBox').textContent = txt; return; }
+        const lines = [];
+        lines.push(`尝试修改文件：${obj.path}`);
+        lines.push(`修改前状态：${obj.before}`);
+        lines.push(`修改后状态：${obj.after}`);
+        if(obj.change) lines.push(`变化描述：${obj.change}`);
+        if(obj.before_hash && obj.after_hash) lines.push(`哈希对比：${obj.before_hash.slice(0,12)}... -> ${obj.after_hash.slice(0,12)}...`);
+        document.getElementById('integrityBox').textContent = lines.join('\n');
+    }
+    </script>
+</body>
+</html>

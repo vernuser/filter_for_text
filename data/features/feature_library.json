@@ -1,323 +1,63 @@
 {
-  "learned_keyword": [
+  "max_char_repeat": [
     {
-      "value": "学习",
-      "weight": 2.0,
-      "frequency": 24
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "样本",
-      "weight": 2.0,
-      "frequency": 24
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "v100",
-      "weight": 2.0,
-      "frequency": 23
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "Traceback",
-      "weight": 2.0,
-      "frequency": 16
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "example",
-      "weight": 2.0,
-      "frequency": 16
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "com",
-      "weight": 2.0,
-      "frequency": 16
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "123",
-      "weight": 2.0,
-      "frequency": 9
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "请勿",
-      "weight": 2.0,
-      "frequency": 8
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "外传",
-      "weight": 2.0,
-      "frequency": 8
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "password",
-      "weight": 2.0,
-      "frequency": 8
+      "value": "2",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
-      "value": "Admin",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "错误",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "日志",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "显示",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "仓库",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "泄露",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "示例",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "email",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "test",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "手机号",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "13800138000",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "身份证",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "110105199001019999",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "点击",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "链接",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "https",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "verify",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "输入",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "验证码",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "限时",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "领取",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "访问",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "etc",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "passwd",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "file",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "Windows",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "System32",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "most",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "recent",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "call",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "last",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "Warning",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "mysql",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "connect",
-      "weight": 2.0,
-      "frequency": 8
-    },
-    {
-      "value": "肯德基",
-      "weight": 2.0,
+      "value": "2",
+      "weight": 1.0,
       "frequency": 1
     },
     {
-      "value": "疯狂",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "星期四",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "50",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "疯狂星期四",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "肯德基疯狂星期四",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "叽里咕噜",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "拨打",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "电话",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "关机",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "稍后",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "您好",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "请问",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "xxxxx",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "一笔",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "额外",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "费用",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "需要",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "支付",
-      "weight": 2.0,
-      "frequency": 1
-    },
-    {
-      "value": "123123123123",
-      "weight": 2.0,
+      "value": "4",
+      "weight": 1.0,
       "frequency": 1
     }
   ],
@@ -325,524 +65,357 @@
     {
       "value": "0",
       "weight": 1.0,
-      "frequency": 79
-    }
-  ],
-  "sensitive_word_count": [
+      "frequency": 2
+    },
     {
       "value": "0",
       "weight": 1.0,
-      "frequency": 79
-    }
-  ],
-  "url_count": [
+      "frequency": 2
+    },
     {
       "value": "0",
       "weight": 1.0,
-      "frequency": 71
+      "frequency": 2
     },
-    {
-      "value": "1",
-      "weight": 1.0,
-      "frequency": 8
-    }
-  ],
-  "email_count": [
     {
       "value": "0",
       "weight": 1.0,
-      "frequency": 71
+      "frequency": 2
     },
     {
-      "value": "1",
-      "weight": 1.0,
-      "frequency": 8
-    }
-  ],
-  "max_char_repeat": [
-    {
-      "value": "2",
-      "weight": 1.0,
-      "frequency": 58
-    },
-    {
-      "value": "1",
-      "weight": 1.0,
-      "frequency": 11
-    },
-    {
-      "value": "4",
-      "weight": 1.0,
-      "frequency": 9
-    },
-    {
-      "value": "5",
-      "weight": 1.0,
-      "frequency": 1
-    }
-  ],
-  "word_count": [
-    {
-      "value": "2",
-      "weight": 1.0,
-      "frequency": 34
-    },
-    {
-      "value": "4",
-      "weight": 1.0,
-      "frequency": 16
-    },
-    {
-      "value": "5",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "3",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "7",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "1",
-      "weight": 1.0,
-      "frequency": 5
-    }
-  ],
-  "punct_ratio": [
-    {
-      "value": "0.0",
-      "weight": 1.0,
-      "frequency": 31
-    },
-    {
-      "value": "0.1111111111111111",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.07575757575757576",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.13333333333333333",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.18604651162790697",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.11864406779661017",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.09375",
-      "weight": 1.0,
-      "frequency": 3
-    },
-    {
-      "value": "0.034482758620689655",
+      "value": "0",
       "weight": 1.0,
       "frequency": 2
     },
     {
-      "value": "0.08333333333333333",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "0.06666666666666667",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "0.07407407407407407",
-      "weight": 1.0,
-      "frequency": 1
-    }
-  ],
-  "length": [
-    {
-      "value": "10",
-      "weight": 1.0,
-      "frequency": 23
-    },
-    {
-      "value": "63",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "66",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "45",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "43",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "59",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "18",
-      "weight": 1.0,
-      "frequency": 5
-    },
-    {
-      "value": "32",
-      "weight": 1.0,
-      "frequency": 3
-    },
-    {
-      "value": "29",
+      "value": "0",
       "weight": 1.0,
       "frequency": 2
     },
     {
-      "value": "36",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "7",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "15",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "27",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "3",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "12",
-      "weight": 1.0,
-      "frequency": 1
-    }
-  ],
-  "char_count": [
-    {
-      "value": "10",
-      "weight": 1.0,
-      "frequency": 23
-    },
-    {
-      "value": "63",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "66",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "45",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "43",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "59",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "18",
-      "weight": 1.0,
-      "frequency": 5
-    },
-    {
-      "value": "32",
-      "weight": 1.0,
-      "frequency": 3
-    },
-    {
-      "value": "29",
+      "value": "0",
       "weight": 1.0,
       "frequency": 2
     },
     {
-      "value": "36",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "7",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "15",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "27",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "3",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "12",
-      "weight": 1.0,
-      "frequency": 1
-    }
-  ],
-  "digit_ratio": [
-    {
-      "value": "0.3",
-      "weight": 1.0,
-      "frequency": 23
-    },
-    {
-      "value": "0.0",
-      "weight": 1.0,
-      "frequency": 19
-    },
-    {
-      "value": "0.047619047619047616",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.4393939393939394",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.046511627906976744",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.1111111111111111",
-      "weight": 1.0,
-      "frequency": 5
-    },
-    {
-      "value": "0.09375",
-      "weight": 1.0,
-      "frequency": 3
-    },
-    {
-      "value": "0.4827586206896552",
+      "value": "0",
       "weight": 1.0,
       "frequency": 2
     },
     {
-      "value": "1.0",
+      "value": "0",
       "weight": 1.0,
       "frequency": 2
     },
     {
-      "value": "0.08333333333333333",
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
       "weight": 1.0,
       "frequency": 1
     }
   ],
   "alpha_ratio": [
     {
-      "value": "0.5",
+      "value": "0.7777777777777778",
       "weight": 1.0,
-      "frequency": 23
+      "frequency": 2
     },
     {
       "value": "0.7777777777777778",
       "weight": 1.0,
-      "frequency": 13
+      "frequency": 2
+    },
+    {
+      "value": "0.7777777777777778",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.7777777777777778",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.7777777777777778",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.7777777777777778",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.7777777777777778",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.7777777777777778",
+      "weight": 1.0,
+      "frequency": 1
     },
     {
       "value": "0.4393939393939394",
       "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.8222222222222222",
-      "weight": 1.0,
-      "frequency": 8
+      "frequency": 1
     },
     {
       "value": "0.6976744186046512",
       "weight": 1.0,
-      "frequency": 8
+      "frequency": 1
     },
     {
       "value": "0.7796610169491526",
       "weight": 1.0,
-      "frequency": 8
-    },
+      "frequency": 1
+    }
+  ],
+  "sensitive_word_count": [
     {
-      "value": "0.78125",
-      "weight": 1.0,
-      "frequency": 3
-    },
-    {
-      "value": "0.4482758620689655",
+      "value": "0",
       "weight": 1.0,
       "frequency": 2
     },
     {
-      "value": "0.0",
+      "value": "0",
       "weight": 1.0,
       "frequency": 2
     },
     {
-      "value": "0.8055555555555556",
+      "value": "0",
       "weight": 1.0,
-      "frequency": 1
+      "frequency": 2
     },
     {
-      "value": "1.0",
+      "value": "0",
       "weight": 1.0,
-      "frequency": 1
+      "frequency": 2
     },
     {
-      "value": "0.9333333333333333",
+      "value": "0",
       "weight": 1.0,
-      "frequency": 1
+      "frequency": 2
     },
     {
-      "value": "0.9259259259259259",
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
       "weight": 1.0,
       "frequency": 1
     }
   ],
-  "space_ratio": [
+  "url_count": [
     {
-      "value": "0.2",
-      "weight": 1.0,
-      "frequency": 23
-    },
-    {
-      "value": "0.06349206349206349",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.045454545454545456",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.044444444444444446",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.06976744186046512",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.1016949152542373",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "0.1111111111111111",
-      "weight": 1.0,
-      "frequency": 5
-    },
-    {
-      "value": "0.0",
-      "weight": 1.0,
-      "frequency": 5
-    },
-    {
-      "value": "0.03125",
-      "weight": 1.0,
-      "frequency": 3
-    },
-    {
-      "value": "0.034482758620689655",
+      "value": "0",
       "weight": 1.0,
       "frequency": 2
     },
     {
-      "value": "0.027777777777777776",
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
       "weight": 1.0,
       "frequency": 1
     }
   ],
-  "chinese_word_count": [
+  "email_count": [
     {
-      "value": "5",
+      "value": "0",
       "weight": 1.0,
-      "frequency": 23
+      "frequency": 2
     },
     {
-      "value": "29",
+      "value": "0",
       "weight": 1.0,
-      "frequency": 8
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "length": [
+    {
+      "value": "63",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "63",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "63",
+      "weight": 1.0,
+      "frequency": 2
     },
     {
       "value": "18",
       "weight": 1.0,
-      "frequency": 8
+      "frequency": 2
     },
     {
-      "value": "20",
+      "value": "63",
       "weight": 1.0,
-      "frequency": 8
+      "frequency": 2
     },
     {
-      "value": "19",
+      "value": "18",
       "weight": 1.0,
-      "frequency": 8
+      "frequency": 2
     },
     {
-      "value": "21",
+      "value": "63",
       "weight": 1.0,
-      "frequency": 8
+      "frequency": 1
     },
     {
-      "value": "10",
+      "value": "18",
       "weight": 1.0,
-      "frequency": 5
+      "frequency": 1
     },
     {
-      "value": "13",
+      "value": "66",
       "weight": 1.0,
-      "frequency": 4
+      "frequency": 1
     },
     {
-      "value": "9",
+      "value": "43",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "59",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "word_count": [
+    {
+      "value": "5",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "5",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "5",
       "weight": 1.0,
       "frequency": 2
     },
@@ -852,166 +425,546 @@
       "frequency": 2
     },
     {
+      "value": "5",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "4",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "5",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
       "value": "4",
       "weight": 1.0,
       "frequency": 1
     },
     {
-      "value": "11",
+      "value": "7",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "char_count": [
+    {
+      "value": "63",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "63",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "63",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "18",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "63",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "18",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "63",
       "weight": 1.0,
       "frequency": 1
     },
     {
-      "value": "16",
+      "value": "18",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "66",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "43",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "59",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "digit_ratio": [
+    {
+      "value": "0.047619047619047616",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.047619047619047616",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.047619047619047616",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.16666666666666666",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.047619047619047616",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.16666666666666666",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.047619047619047616",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.16666666666666666",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.4393939393939394",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.046511627906976744",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.0",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "space_ratio": [
+    {
+      "value": "0.06349206349206349",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.06349206349206349",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.06349206349206349",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.06349206349206349",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.06349206349206349",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.0",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.045454545454545456",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.06976744186046512",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.1016949152542373",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "punct_ratio": [
+    {
+      "value": "0.1111111111111111",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.1111111111111111",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.1111111111111111",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.05555555555555555",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.1111111111111111",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.05555555555555555",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "0.1111111111111111",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.05555555555555555",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.07575757575757576",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.18604651162790697",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "0.11864406779661017",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "chinese_word_count": [
+    {
+      "value": "29",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "29",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "29",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "3",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "29",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "3",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "29",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "3",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "18",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "19",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "21",
       "weight": 1.0,
       "frequency": 1
     }
   ],
   "avg_word_length": [
     {
-      "value": "2.0",
-      "weight": 1.0,
-      "frequency": 23
-    },
-    {
       "value": "2.1724137931034484",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "3.6666666666666665",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "2.25",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "2.263157894736842",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "2.8095238095238093",
-      "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "1.8",
-      "weight": 1.0,
-      "frequency": 5
-    },
-    {
-      "value": "2.4615384615384617",
-      "weight": 1.0,
-      "frequency": 3
-    },
-    {
-      "value": "3.2222222222222223",
       "weight": 1.0,
       "frequency": 2
     },
     {
-      "value": "2.769230769230769",
+      "value": "2.1724137931034484",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "2.1724137931034484",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "6.0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "2.1724137931034484",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "6.0",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "2.1724137931034484",
       "weight": 1.0,
       "frequency": 1
     },
     {
-      "value": "1.75",
+      "value": "6.0",
       "weight": 1.0,
       "frequency": 1
     },
     {
-      "value": "1.3636363636363635",
+      "value": "3.6666666666666665",
       "weight": 1.0,
       "frequency": 1
     },
     {
-      "value": "1.6875",
+      "value": "2.263157894736842",
       "weight": 1.0,
       "frequency": 1
     },
     {
-      "value": "3.0",
-      "weight": 1.0,
-      "frequency": 1
-    },
-    {
-      "value": "12.0",
+      "value": "2.8095238095238093",
       "weight": 1.0,
       "frequency": 1
     }
   ],
   "entropy": [
     {
-      "value": "2.9219280948873623",
+      "value": "5.5406168281931425",
       "weight": 1.0,
-      "frequency": 23
+      "frequency": 2
     },
     {
       "value": "5.5406168281931425",
       "weight": 1.0,
-      "frequency": 8
+      "frequency": 2
+    },
+    {
+      "value": "5.5406168281931425",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "3.6835423624332306",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "5.5406168281931425",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "3.6835423624332306",
+      "weight": 1.0,
+      "frequency": 2
+    },
+    {
+      "value": "4.400432302535624",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "5.5406168281931425",
+      "weight": 1.0,
+      "frequency": 1
+    },
+    {
+      "value": "3.6835423624332306",
+      "weight": 1.0,
+      "frequency": 1
     },
     {
       "value": "4.495320923032281",
       "weight": 1.0,
-      "frequency": 8
-    },
-    {
-      "value": "5.102746985122408",
-      "weight": 1.0,
-      "frequency": 8
+      "frequency": 1
     },
     {
       "value": "4.425810103338054",
       "weight": 1.0,
-      "frequency": 8
+      "frequency": 1
     },
     {
       "value": "4.22588701611007",
       "weight": 1.0,
-      "frequency": 8
-    },
+      "frequency": 1
+    }
+  ],
+  "url_length": [
     {
-      "value": "4.058813890331201",
-      "weight": 1.0,
-      "frequency": 5
-    },
-    {
-      "value": "4.8125",
-      "weight": 1.0,
-      "frequency": 3
-    },
-    {
-      "value": "3.7814540658560687",
-      "weight": 1.0,
-      "frequency": 2
-    },
-    {
-      "value": "1.584962500721156",
-      "weight": 1.0,
-      "frequency": 2
-    },
-    {
-      "value": "4.680768321596843",
+      "value": "35",
       "weight": 1.0,
       "frequency": 1
-    },
+    }
+  ],
+  "domain_length": [
     {
-      "value": "2.807354922057604",
+      "value": "16",
       "weight": 1.0,
       "frequency": 1
-    },
+    }
+  ],
+  "path_length": [
     {
-      "value": "3.773557262275185",
+      "value": "11",
       "weight": 1.0,
       "frequency": 1
-    },
+    }
+  ],
+  "dot_count": [
     {
-      "value": "4.176752669776922",
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "slash_count": [
+    {
+      "value": "3",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "dash_count": [
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "underscore_count": [
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "question_count": [
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "equal_count": [
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "and_count": [
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "is_https": [
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "is_http": [
+    {
+      "value": "1",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "suspicious_pattern_count": [
+    {
+      "value": "4",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "has_ip": [
+    {
+      "value": "0",
+      "weight": 1.0,
+      "frequency": 1
+    }
+  ],
+  "has_unusual_port": [
+    {
+      "value": "0",
       "weight": 1.0,
       "frequency": 1
     }

@@ -1,0 +1,83 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:0.1" />
+      <stop offset="50%" style="stop-color:#FFB6C1;stop-opacity:0.05" />
+      <stop offset="100%" style="stop-color:#DDA0DD;stop-opacity:0.1" />
+    </linearGradient>
+    
+    <radialGradient id="cloudGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#F0F8FF;stop-opacity:0.3" />
+    </radialGradient>
+    
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Sky background -->
+  <rect width="1920" height="1080" fill="url(#skyGradient)"/>
+  
+  <!-- Floating clouds -->
+  <ellipse cx="300" cy="200" rx="80" ry="40" fill="url(#cloudGradient)" opacity="0.6"/>
+  <ellipse cx="280" cy="190" rx="60" ry="30" fill="url(#cloudGradient)" opacity="0.4"/>
+  <ellipse cx="320" cy="185" rx="50" ry="25" fill="url(#cloudGradient)" opacity="0.5"/>
+  
+  <ellipse cx="800" cy="150" rx="100" ry="50" fill="url(#cloudGradient)" opacity="0.5"/>
+  <ellipse cx="780" cy="140" rx="70" ry="35" fill="url(#cloudGradient)" opacity="0.3"/>
+  
+  <ellipse cx="1400" cy="180" rx="90" ry="45" fill="url(#cloudGradient)" opacity="0.6"/>
+  <ellipse cx="1380" cy="170" rx="65" ry="32" fill="url(#cloudGradient)" opacity="0.4"/>
+  
+  <!-- Sakura petals -->
+  <g opacity="0.7">
+    <path d="M100,300 Q105,295 110,300 Q105,305 100,300 Z" fill="#FFB6C1" filter="url(#glow)">
+      <animateTransform attributeName="transform" type="translate" values="0,0; 50,100; 100,200" dur="8s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" values="0; 360" dur="4s" repeatCount="indefinite" additive="sum"/>
+    </path>
+    
+    <path d="M500,250 Q505,245 510,250 Q505,255 500,250 Z" fill="#FFC0CB" filter="url(#glow)">
+      <animateTransform attributeName="transform" type="translate" values="0,0; -30,120; -60,240" dur="10s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" values="0; -360" dur="5s" repeatCount="indefinite" additive="sum"/>
+    </path>
+    
+    <path d="M1200,200 Q1205,195 1210,200 Q1205,205 1200,200 Z" fill="#FFB6C1" filter="url(#glow)">
+      <animateTransform attributeName="transform" type="translate" values="0,0; 80,150; 160,300" dur="12s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" values="0; 360" dur="6s" repeatCount="indefinite" additive="sum"/>
+    </path>
+    
+    <path d="M1600,180 Q1605,175 1610,180 Q1605,185 1600,180 Z" fill="#FFC0CB" filter="url(#glow)">
+      <animateTransform attributeName="transform" type="translate" values="0,0; -40,100; -80,200" dur="9s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" values="0; -360" dur="4.5s" repeatCount="indefinite" additive="sum"/>
+    </path>
+  </g>
+  
+  <!-- Sparkles -->
+  <g opacity="0.8">
+    <circle cx="200" cy="400" r="2" fill="#FFD700" filter="url(#glow)">
+      <animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="600" cy="350" r="1.5" fill="#FF69B4" filter="url(#glow)">
+      <animate attributeName="opacity" values="0;1;0" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1000" cy="450" r="2.5" fill="#87CEEB" filter="url(#glow)">
+      <animate attributeName="opacity" values="0;1;0" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1500" cy="380" r="2" fill="#DDA0DD" filter="url(#glow)">
+      <animate attributeName="opacity" values="0;1;0" dur="3.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Geometric patterns -->
+  <g opacity="0.1">
+    <polygon points="50,600 100,550 150,600 100,650" fill="#FF69B4"/>
+    <polygon points="1750,700 1800,650 1850,700 1800,750" fill="#87CEEB"/>
+    <circle cx="300" cy="800" r="30" fill="none" stroke="#DDA0DD" stroke-width="2"/>
+    <circle cx="1600" cy="900" r="25" fill="none" stroke="#FFB6C1" stroke-width="2"/>
+  </g>
+</svg>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自学习与安全验证 - Fairy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+    <div class="dashboard-container" style="padding: 24px;">
+        <div class="header">
+            <h1 class="title">自学习与安全验证</h1>
+            <div class="user-info">
+                <span>欢迎，{{ username }}</span>
+                <a href="/smoke" class="logout-btn">返回测试类型页面</a>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;">
+            <div style="flex:1; min-width:360px;">
+                <h3>自学习验证</h3>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button class="analyze-btn" onclick="learnAddSamples()"><span>一键添加样例</span><div class="btn-glow"></div></button>
+                    <button class="reset-btn" onclick="learnSubmit()">提交样例到训练集</button>
+                    <button class="reset-btn" onclick="showLearnHint()">操作提示</button>
+                </div>
+                <textarea id="learnContent" class="main-input text-area" rows="4" placeholder="可选：在此输入要加入训练的样本，每行一条"></textarea>
+                <pre id="learnBox" style="background:#0f1226; color:#cfd3ff; padding:12px; border-radius:12px; margin-top:8px; white-space:pre-wrap;"></pre>
+            </div>
+
+            <div style="flex:1; min-width:360px;">
+                <h3>自动下载黑名单</h3>
+                <button class="analyze-btn" onclick="blacklistManual()"><span>手动更新</span><div class="btn-glow"></div></button>
+                <pre id="blacklistBox" style="background:#0f1226; color:#cfd3ff; padding:12px; border-radius:12px; margin-top:8px; white-space:pre-wrap; min-height:100px;"></pre>
+            </div>
+
+            <div style="flex:1; min-width:360px;">
+                <h3>防篡改验证</h3>
+                <button class="analyze-btn" onclick="integrityMock()"><span>模拟篡改并检测</span><div class="btn-glow"></div></button>
+                <pre id="integrityBox" style="background:#0f1226; color:#cfd3ff; padding:12px; border-radius:12px; margin-top:8px; white-space:pre-wrap; min-height:100px;"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // 简易弹窗
+    function showLearnHint(){
+        const html = `
+        <div id="hintModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:9999;">
+          <div style="background:#12163a; color:#cfd3ff; padding:16px 20px; border-radius:12px; width:420px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+            <h4 style="margin:0 0 8px 0;">自学习使用提示</h4>
+            <p style="margin:0 0 8px 0; line-height:1.6;">先点击“<b>一键添加样例</b>”在输入框填充示例，然后点击“<b>提交样例到训练集</b>”。也可在输入框自行逐行输入。</p>
+            <div style="text-align:right; margin-top:12px;">
+              <button class="reset-btn" onclick="closeLearnHint()">我知道了</button>
+            </div>
+          </div>
+        </div>`;
+        if(!document.getElementById('hintModal')){
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            document.body.appendChild(div.firstElementChild);
+        }
+    }
+    function closeLearnHint(){
+        const m = document.getElementById('hintModal');
+        if(m) m.remove();
+    }
+    const samples = {
+        text: [
+            "您的银行账户已被冻结，请访问 secure-verify.io 进行验证，或点击 bit.ly/abc123",
+            "请立即输入验证码完成登录，否则账户将被限制访问",
+            "下载最新系统工具并更新，点击链接 http://update-secure.example.com",
+            "泄露示例：api_key=SECRET123，email test@example.com"
+        ],
+        url: [
+            "http://phishing-site.net/login",
+            "http://192.168.1.100:8080/download?id=1",
+            "https://tinyurl.com/abc123",
+            "http://secure-verify.io/auth"
+        ],
+        ip: [
+            "8.8.8.8",
+            "123.45.67.89",
+            "192.168.1.100"
+        ],
+        domain: [
+            "phishing-site.net",
+            "secure-verify.io",
+            "example-malware.com"
+        ]
+    };
+
+    async function learnAddSamples(){
+        const area = document.getElementById('learnContent');
+        const demoLines = [];
+        for(const k of Object.keys(samples)){
+            for(const v of samples[k]) demoLines.push(v);
+        }
+        demoLines.push('这是一个假样本（用于演示）');
+        area.value = demoLines.join('\n');
+        document.getElementById('learnBox').textContent = `已在输入框填充 ${demoLines.length} 条样例`;
+    }
+
+    async function blacklistManual(){
+        const box = document.getElementById('blacklistBox');
+        box.textContent = '开始手动更新...';
+        const startResp = await fetch('/api/blacklist/manual/start', { method:'POST' });
+        if(!startResp.ok){
+            // 回退到一次性更新接口
+            const resp = await fetch('/api/blacklist/manual', { method:'POST' });
+            const txt = await resp.text();
+            let obj; try { obj = JSON.parse(txt); } catch(e) {}
+            if(!obj){ box.textContent = txt; return; }
+            const lines = [];
+            for(const line of (obj.logs||[])) lines.push(line);
+            lines.push(`合计添加：${obj.total_added||0} 条`);
+            box.textContent = lines.join('\n');
+            return;
+        }
+        // 立即拉取一次，确保第一条“正在从xxx下载黑名单...”立刻显示
+        {
+            const first = await fetch('/api/blacklist/manual/logs');
+            if(first.ok){
+                const ftxt = await first.text();
+                let fobj; try{ fobj = JSON.parse(ftxt); }catch(e){}
+                if(fobj){
+                    const lines = [];
+                    for(const line of (fobj.logs||[])) lines.push(line);
+                    box.textContent = lines.join('\n');
+                }
+            }
+        }
+        let timer = setInterval(async ()=>{
+            const resp = await fetch('/api/blacklist/manual/logs');
+            if(!resp.ok){
+                clearInterval(timer);
+                const fallback = await fetch('/api/blacklist/manual', { method:'POST' });
+                const fallbackTxt = await fallback.text();
+                box.textContent = fallbackTxt;
+                return;
+            }
+            const txt = await resp.text();
+            let obj; try { obj = JSON.parse(txt); } catch(e) {}
+            if(!obj){ box.textContent = txt; return; }
+            const lines = [];
+            for(const line of (obj.logs||[])) lines.push(line);
+            if(!obj.running){
+                lines.push(`合计添加：${obj.total_added||0} 条`);
+                clearInterval(timer);
+            }
+            box.textContent = lines.join('\n');
+        }, 1000);
+    }
+
+    async function integrityMock(){
+        const resp = await fetch('/api/security/integrity/mock', { method:'POST' });
+        const txt = await resp.text();
+        let obj; try { obj = JSON.parse(txt); } catch(e) {}
+        if(!obj){ document.getElementById('integrityBox').textContent = txt; return; }
+        const lines = [];
+        lines.push(`尝试修改文件：${obj.path}`);
+        lines.push(`修改前状态：${obj.before}`);
+        lines.push(`修改后状态：${obj.after}`);
+        if(obj.change) lines.push(`变化描述：${obj.change}`);
+        if(obj.before_hash && obj.after_hash) lines.push(`哈希对比：${obj.before_hash.slice(0,12)}... -> ${obj.after_hash.slice(0,12)}...`);
+        if(obj.tamper_result) lines.push(`结论：${obj.tamper_result}`);
+        document.getElementById('integrityBox').textContent = lines.join('\n');
+    }
+    async function learnSubmit(){
+        const area = document.getElementById('learnContent');
+        const lines = (area.value||'').split(/\n+/).map(s=>s.trim()).filter(s=>s.length>0);
+        if(lines.length===0){ showLearnHint(); return; }
+        const detectType = (s)=>{
+            if(/^[0-9]{1,3}(\.[0-9]{1,3}){3}$/.test(s)) return 'ip';
+            if(/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(s) && !/^https?:\/\//i.test(s)) return 'domain';
+            if(/https?:\/\//i.test(s)) return 'url';
+            return 'text';
+        };
+        let ok=0, fail=0;
+        for(const s of lines){
+            const payload = { type: detectType(s), content: s, label: 1 };
+            try{
+                const resp = await fetch('/api/learn/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+                const j = await resp.json();
+                if(j && j.success) ok++; else fail++;
+            }catch(e){ fail++; }
+            document.getElementById('learnBox').textContent = `已提交：${ok+fail}/${lines.length}（成功 ${ok}，失败 ${fail}）`;
+        }
+        document.getElementById('learnBox').textContent = `提交完成：成功 ${ok}，失败 ${fail}`;
+    }
+    </script>
+</body>
+</html>

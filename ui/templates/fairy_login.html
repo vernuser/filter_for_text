@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fairy Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+    <div class="login-container">
+        <!-- 背景粒子效果 -->
+        <div class="particles"></div>
+        
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <!-- Fairy角色 -->
+            <div class="fairy-container" id="fairyContainer">
+                <div class="fairy-character" id="fairyCharacter">
+                    <img src="{{ url_for('static', filename='images/assistant.svg') }}" alt="Fairy" class="fairy-image" id="fairyImage">
+                    <div class="fairy-glow"></div>
+                    <!-- 分裂后的左右两部分（初始隐藏） -->
+                    <div class="fairy-left" style="display: none;">
+                        <img src="{{ url_for('static', filename='images/assistant.svg') }}" alt="Fairy Left">
+                    </div>
+                    <div class="fairy-right" style="display: none;">
+                        <img src="{{ url_for('static', filename='images/assistant.svg') }}" alt="Fairy Right">
+                    </div>
+                </div>
+                
+                <!-- 登录表单（初始隐藏） -->
+                <div class="login-form-container" id="loginFormContainer">
+                    <div class="login-form">
+                        <h2 class="login-title">系统接入</h2>
+                        <form id="loginForm" method="POST">
+                            <div class="input-group">
+                                <input type="text" id="username" name="username" required>
+                                <label for="username">用户名</label>
+                                <div class="input-line"></div>
+                            </div>
+                            <div class="input-group">
+                                <input type="password" id="password" name="password" required>
+                                <label for="password">密码</label>
+                                <div class="input-line"></div>
+                            </div>
+                            <button type="submit" class="login-btn">
+                                <span>登录</span>
+                                <div class="btn-glow"></div>
+                            </button>
+                        </form>
+                        <div class="login-attempts" id="loginAttempts">
+                            剩余尝试次数: <span id="attemptsLeft">10</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- EVA风格错误提示 -->
+            <div class="eva-error" id="evaError">
+                <div class="error-content">
+                    <div class="error-icon">⚠</div>
+                    <div class="error-text">
+                        <h3>ACCESS DENIED</h3>
+                        <p id="errorMessage">登录失败，请检查用户名和密码</p>
+                    </div>
+                    <div class="error-progress">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 系统信息显示 -->
+        <div class="system-info">
+            <div class="info-line">SYSTEM STATUS: ONLINE</div>
+            <div class="info-line">SECURITY LEVEL: HIGH</div>
+            <div class="info-line">CONNECTION: SECURE</div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+</html>

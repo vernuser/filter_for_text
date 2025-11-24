@@ -22,6 +22,22 @@ class BlacklistUpdater:
         self.update_interval = FILTER_CONFIG.get('auto_update_interval', 24)
         self.running = False
         self.update_thread = None
+        # 实时日志与状态（用于前端轮询显示进度）
+        self.live_logs = []
+        self.live_running = False
+        self.live_summary = {'total_added': 0, 'success_count': 0, 'total_count': 0}
+
+    def _connect_db(self):
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=10)
+            try:
+                conn.execute('PRAGMA journal_mode=WAL;')
+                conn.execute('PRAGMA busy_timeout=8000;')
+            except Exception:
+                pass
+            return conn
+        except Exception:
+            return sqlite3.connect(self.db_path)
         
         # 设置定时更新
         schedule.every(self.update_interval).hours.do(self.update_all_blacklists)
@@ -63,6 +79,97 @@ class BlacklistUpdater:
         
         self.logger.info(f"黑名单更新完成: {success_count}/{total_count} 成功")
         self._log_update_result(success_count, total_count)
+
+    def _get_total_blacklist_items(self) -> int:
+        try:
+            conn = self._connect_db()
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM blacklist_urls')
+            urls = cursor.fetchone()[0]
+            cursor.execute('SELECT COUNT(*) FROM blacklist_ips')
+            ips = cursor.fetchone()[0]
+            cursor.execute('SELECT COUNT(*) FROM blacklist_text')
+            textp = cursor.fetchone()[0]
+            conn.close()
+            return int(urls) + int(ips) + int(textp)
+        except Exception:
+            return 0
+
+    def update_all_blacklists_with_stats(self) -> Dict:
+        """更新所有黑名单并返回逐源统计日志"""
+        self.logger.info("开始更新黑名单(带统计)...")
+        logs = []
+        total_added = 0
+        success_count = 0
+        total_count = len(BLACKLIST_URLS)
+        for url in BLACKLIST_URLS:
+            before = self._get_total_blacklist_items()
+            try:
+                logs.append(f"正在从 {url} 下载黑名单...")
+                ok = self.update_blacklist_from_url(url)
+                after = self._get_total_blacklist_items()
+                added = max(0, after - before)
+                total_added += added
+                if ok:
+                    success_count += 1
+                logs.append(f"添加 {added} 个这样的")
+            except Exception as e:
+                logs.append(f"来源 {url} 更新失败: {e}")
+        self.logger.info(f"黑名单更新完成: {success_count}/{total_count} 成功, 新增 {total_added} 条")
+        self._log_update_result(success_count, total_count)
+        return {
+            'logs': logs,
+            'total_added': total_added,
+            'success_count': success_count,
+            'total_count': total_count,
+            'timestamp': datetime.now().isoformat()
+        }
+
+    def start_live_update(self):
+        """启动带实时日志的手动更新（异步）"""
+        if not self.live_running:
+            self.live_logs = []
+            self.live_summary = {'total_added': 0, 'success_count': 0, 'total_count': len(BLACKLIST_URLS)}
+            self.live_running = True
+            t = threading.Thread(target=self._run_live_update, daemon=True)
+            t.start()
+            self.update_thread = t
+
+    def _run_live_update(self):
+        try:
+            total_added = 0
+            success_count = 0
+            total_count = len(BLACKLIST_URLS)
+            for url in BLACKLIST_URLS:
+                before = self._get_total_blacklist_items()
+                self.live_logs.append(f"正在从 {url} 下载黑名单...")
+                try:
+                    ok = self.update_blacklist_from_url(url)
+                    after = self._get_total_blacklist_items()
+                    added = max(0, after - before)
+                    total_added += added
+                    if ok:
+                        success_count += 1
+                    self.live_logs.append(f"添加 {added} 个这样的")
+                except Exception as e:
+                    self.live_logs.append(f"来源 {url} 更新失败: {e}")
+            self._log_update_result(success_count, total_count)
+            self.live_summary = {
+                'total_added': total_added,
+                'success_count': success_count,
+                'total_count': total_count
+            }
+        finally:
+            self.live_running = False
+
+    def get_live_status(self) -> Dict:
+        """获取实时更新日志与状态"""
+        return {
+            'running': self.live_running,
+            'logs': list(self.live_logs),
+            **self.live_summary,
+            'timestamp': datetime.now().isoformat()
+        }
     
     def update_blacklist_from_url(self, url: str) -> bool:
         """从指定URL更新黑名单"""
@@ -206,47 +313,55 @@ class BlacklistUpdater:
     
     def _add_domain_to_blacklist(self, domain: str, category: str, severity: int, source: str) -> bool:
         """添加域名到黑名单"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT OR IGNORE INTO blacklist_urls (url, domain, category, severity)
-                VALUES (?, ?, ?, ?)
-            ''', (domain, domain, category, severity))
-            
-            # 检查是否实际插入了新记录
-            inserted = cursor.rowcount > 0
-            conn.commit()
-            conn.close()
-            
-            return inserted
-            
-        except Exception as e:
-            self.logger.error(f"添加域名到黑名单失败 {domain}: {e}")
-            return False
+        import time
+        retries = 3
+        for i in range(retries):
+            try:
+                conn = self._connect_db()
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT OR IGNORE INTO blacklist_urls (url, domain, category, severity)
+                    VALUES (?, ?, ?, ?)
+                ''', (domain, domain, category, severity))
+                inserted = cursor.rowcount > 0
+                conn.commit()
+                conn.close()
+                return inserted
+            except sqlite3.OperationalError as e:
+                if 'database is locked' in str(e).lower() and i < retries - 1:
+                    time.sleep(0.5)
+                    continue
+                self.logger.error(f"添加域名到黑名单失败 {domain}: {e}")
+                return False
+            except Exception as e:
+                self.logger.error(f"添加域名到黑名单失败 {domain}: {e}")
+                return False
     
     def _add_ip_to_blacklist(self, ip: str, category: str, severity: int, source: str) -> bool:
         """添加IP到黑名单"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT OR IGNORE INTO blacklist_ips (ip_address, category, severity)
-                VALUES (?, ?, ?)
-            ''', (ip, category, severity))
-            
-            # 检查是否实际插入了新记录
-            inserted = cursor.rowcount > 0
-            conn.commit()
-            conn.close()
-            
-            return inserted
-            
-        except Exception as e:
-            self.logger.error(f"添加IP到黑名单失败 {ip}: {e}")
-            return False
+        import time
+        retries = 3
+        for i in range(retries):
+            try:
+                conn = self._connect_db()
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT OR IGNORE INTO blacklist_ips (ip_address, category, severity)
+                    VALUES (?, ?, ?)
+                ''', (ip, category, severity))
+                inserted = cursor.rowcount > 0
+                conn.commit()
+                conn.close()
+                return inserted
+            except sqlite3.OperationalError as e:
+                if 'database is locked' in str(e).lower() and i < retries - 1:
+                    time.sleep(0.5)
+                    continue
+                self.logger.error(f"添加IP到黑名单失败 {ip}: {e}")
+                return False
+            except Exception as e:
+                self.logger.error(f"添加IP到黑名单失败 {ip}: {e}")
+                return False
     
     def _log_update_result(self, success_count: int, total_count: int):
         """记录更新结果"""
@@ -359,17 +474,26 @@ class BlacklistUpdater:
             return False
 
     def _add_text_pattern_to_blacklist(self, pattern: str, category: str, severity: int) -> bool:
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT OR IGNORE INTO blacklist_text (pattern, category, severity)
-                VALUES (?, ?, ?)
-            ''', (pattern, category, severity))
-            inserted = cursor.rowcount > 0
-            conn.commit()
-            conn.close()
-            return inserted
-        except Exception as e:
-            self.logger.error(f"添加文本特征到黑名单失败 {pattern}: {e}")
-            return False
+        import time
+        retries = 3
+        for i in range(retries):
+            try:
+                conn = self._connect_db()
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT OR IGNORE INTO blacklist_text (pattern, category, severity)
+                    VALUES (?, ?, ?)
+                ''', (pattern, category, severity))
+                inserted = cursor.rowcount > 0
+                conn.commit()
+                conn.close()
+                return inserted
+            except sqlite3.OperationalError as e:
+                if 'database is locked' in str(e).lower() and i < retries - 1:
+                    time.sleep(0.5)
+                    continue
+                self.logger.error(f"添加文本特征到黑名单失败 {pattern}: {e}")
+                return False
+            except Exception as e:
+                self.logger.error(f"添加文本特征到黑名单失败 {pattern}: {e}")
+                return False

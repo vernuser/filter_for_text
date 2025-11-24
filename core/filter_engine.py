@@ -161,7 +161,6 @@ class FilterEngine:
         Returns:
             Tuple[str, List[Dict]]: (过滤后的文本, 检测到的违规内容列表)
         """
-        self._load_patterns()
         violations = []
         filtered_text = text
         
