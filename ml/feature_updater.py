@@ -1,7 +1,5 @@
-
 import os
 import json
-import sqlite3
 import logging
 import requests
 import threading
@@ -10,13 +8,13 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Set, Optional
 from collections import defaultdict, Counter
 import schedule
-from config.settings import DATABASE_PATH, ML_FEATURE_PATH
+from config.settings import ML_FEATURE_PATH
+from core.database import db_manager
 
 class FeatureUpdater:
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.db_path = DATABASE_PATH
         self.feature_path = ML_FEATURE_PATH
         self.running = False
         self.update_thread = None
@@ -197,21 +195,20 @@ class FeatureUpdater:
     
     def _add_malicious_domains(self, domains: Set[str]):
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            for domain in domains:
-                cursor.execute('''
-                    INSERT OR REPLACE INTO feature_library 
-                    (feature_type, feature_value, weight, frequency, last_seen)
-                    VALUES (?, ?, ?, 
-                           COALESCE((SELECT frequency FROM feature_library 
-                                   WHERE feature_type = ? AND feature_value = ?), 0) + 1,
-                           CURRENT_TIMESTAMP)
-                ''', ('malicious_domain', domain, 0.9, 'malicious_domain', domain))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                for domain in domains:
+                    cursor.execute('''
+                        INSERT INTO feature_library 
+                        (feature_type, feature_value, weight, frequency, last_seen)
+                        VALUES (%s, %s, %s, 1, CURRENT_TIMESTAMP)
+                        ON DUPLICATE KEY UPDATE
+                        frequency = frequency + 1,
+                        last_seen = CURRENT_TIMESTAMP
+                    ''', ('malicious_domain', domain, 0.9))
+                
+                conn.commit()
             
             self.logger.info(f"已添加 {len(domains)} 个恶意域名")
             
@@ -220,32 +217,31 @@ class FeatureUpdater:
     
     def _add_phishing_patterns(self, urls: Set[str]):
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            patterns = set()
-            for url in urls:
-                # 提取URL模式
-                if '://' in url:
-                    domain = url.split('://')[1].split('/')[0]
-                    patterns.add(domain)
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
                 
-                # 提取可疑关键词
-                suspicious_words = self._extract_suspicious_words(url)
-                patterns.update(suspicious_words)
-            
-            for pattern in patterns:
-                cursor.execute('''
-                    INSERT OR REPLACE INTO feature_library 
-                    (feature_type, feature_value, weight, frequency, last_seen)
-                    VALUES (?, ?, ?, 
-                           COALESCE((SELECT frequency FROM feature_library 
-                                   WHERE feature_type = ? AND feature_value = ?), 0) + 1,
-                           CURRENT_TIMESTAMP)
-                ''', ('phishing_pattern', pattern, 0.8, 'phishing_pattern', pattern))
-            
-            conn.commit()
-            conn.close()
+                patterns = set()
+                for url in urls:
+                    # 提取URL模式
+                    if '://' in url:
+                        domain = url.split('://')[1].split('/')[0]
+                        patterns.add(domain)
+                    
+                    # 提取可疑关键词
+                    suspicious_words = self._extract_suspicious_words(url)
+                    patterns.update(suspicious_words)
+                
+                for pattern in patterns:
+                    cursor.execute('''
+                        INSERT INTO feature_library 
+                        (feature_type, feature_value, weight, frequency, last_seen)
+                        VALUES (%s, %s, %s, 1, CURRENT_TIMESTAMP)
+                        ON DUPLICATE KEY UPDATE
+                        frequency = frequency + 1,
+                        last_seen = CURRENT_TIMESTAMP
+                    ''', ('phishing_pattern', pattern, 0.8))
+                
+                conn.commit()
             
             self.logger.info(f"已添加 {len(patterns)} 个钓鱼模式")
             
@@ -254,21 +250,20 @@ class FeatureUpdater:
     
     def _add_malicious_ips(self, ips: Set[str]):
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            for ip in ips:
-                cursor.execute('''
-                    INSERT OR REPLACE INTO feature_library 
-                    (feature_type, feature_value, weight, frequency, last_seen)
-                    VALUES (?, ?, ?, 
-                           COALESCE((SELECT frequency FROM feature_library 
-                                   WHERE feature_type = ? AND feature_value = ?), 0) + 1,
-                           CURRENT_TIMESTAMP)
-                ''', ('malicious_ip', ip, 0.9, 'malicious_ip', ip))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                for ip in ips:
+                    cursor.execute('''
+                        INSERT INTO feature_library 
+                        (feature_type, feature_value, weight, frequency, last_seen)
+                        VALUES (%s, %s, %s, 1, CURRENT_TIMESTAMP)
+                        ON DUPLICATE KEY UPDATE
+                        frequency = frequency + 1,
+                        last_seen = CURRENT_TIMESTAMP
+                    ''', ('malicious_ip', ip, 0.9))
+                
+                conn.commit()
             
             self.logger.info(f"已添加 {len(ips)} 个恶意IP")
             
@@ -294,34 +289,33 @@ class FeatureUpdater:
     
     def _analyze_local_data(self):
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 分析被标记为恶意的内容
-            cursor.execute('''
-                SELECT content, content_type FROM training_samples 
-                WHERE label = 1 AND created_time > datetime('now', '-30 days')
-            ''')
-            
-            malicious_samples = cursor.fetchall()
-            
-            # 提取新的恶意模式
-            new_patterns = self._extract_patterns_from_samples(malicious_samples)
-            
-            # 添加到特征库
-            for pattern_type, patterns in new_patterns.items():
-                for pattern in patterns:
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO feature_library 
-                        (feature_type, feature_value, weight, frequency, last_seen)
-                        VALUES (?, ?, ?, 
-                               COALESCE((SELECT frequency FROM feature_library 
-                                       WHERE feature_type = ? AND feature_value = ?), 0) + 1,
-                               CURRENT_TIMESTAMP)
-                    ''', (pattern_type, pattern, 0.7, pattern_type, pattern))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 分析被标记为恶意的内容
+                cursor.execute('''
+                    SELECT content, content_type FROM training_samples 
+                    WHERE label = 1 AND created_time > DATE_SUB(NOW(), INTERVAL 30 DAY)
+                ''')
+                
+                malicious_samples = cursor.fetchall()
+                
+                # 提取新的恶意模式
+                new_patterns = self._extract_patterns_from_samples(malicious_samples)
+                
+                # 添加到特征库
+                for pattern_type, patterns in new_patterns.items():
+                    for pattern in patterns:
+                        cursor.execute('''
+                            INSERT INTO feature_library 
+                            (feature_type, feature_value, weight, frequency, last_seen)
+                            VALUES (%s, %s, %s, 1, CURRENT_TIMESTAMP)
+                            ON DUPLICATE KEY UPDATE
+                            frequency = frequency + 1,
+                            last_seen = CURRENT_TIMESTAMP
+                        ''', (pattern_type, pattern, 0.7))
+                
+                conn.commit()
             
             self.logger.info("本地数据分析完成")
             
@@ -356,39 +350,38 @@ class FeatureUpdater:
     
     def _optimize_feature_weights(self):
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 获取预测结果统计
-            cursor.execute('''
-                SELECT 
-                    fl.feature_type,
-                    fl.feature_value,
-                    COUNT(pr.id) as prediction_count,
-                    AVG(CASE WHEN pr.is_correct THEN 1.0 ELSE 0.0 END) as accuracy
-                FROM feature_library fl
-                LEFT JOIN prediction_results pr ON pr.content LIKE '%' || fl.feature_value || '%'
-                WHERE pr.actual_label IS NOT NULL
-                GROUP BY fl.feature_type, fl.feature_value
-                HAVING prediction_count >= 5
-            ''')
-            
-            results = cursor.fetchall()
-            
-            # 更新权重
-            for feature_type, feature_value, prediction_count, accuracy in results:
-                if accuracy is not None:
-                    # 根据准确率调整权重
-                    new_weight = min(0.95, max(0.1, accuracy))
-                    
-                    cursor.execute('''
-                        UPDATE feature_library 
-                        SET weight = ? 
-                        WHERE feature_type = ? AND feature_value = ?
-                    ''', (new_weight, feature_type, feature_value))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 获取预测结果统计
+                cursor.execute('''
+                    SELECT 
+                        fl.feature_type,
+                        fl.feature_value,
+                        COUNT(pr.id) as prediction_count,
+                        AVG(CASE WHEN pr.is_correct THEN 1.0 ELSE 0.0 END) as accuracy
+                    FROM feature_library fl
+                    LEFT JOIN prediction_results pr ON pr.content LIKE CONCAT('%', fl.feature_value, '%')
+                    WHERE pr.actual_label IS NOT NULL
+                    GROUP BY fl.feature_type, fl.feature_value
+                    HAVING prediction_count >= 5
+                ''')
+                
+                results = cursor.fetchall()
+                
+                # 更新权重
+                for feature_type, feature_value, prediction_count, accuracy in results:
+                    if accuracy is not None:
+                        # 根据准确率调整权重
+                        new_weight = min(0.95, max(0.1, accuracy))
+                        
+                        cursor.execute('''
+                            UPDATE feature_library 
+                            SET weight = %s 
+                            WHERE feature_type = %s AND feature_value = %s
+                        ''', (new_weight, feature_type, feature_value))
+                
+                conn.commit()
             
             self.logger.info("特征权重优化完成")
             
@@ -397,31 +390,30 @@ class FeatureUpdater:
     
     def cleanup_old_features(self):
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 删除90天未使用的低权重特征
-            cursor.execute('''
-                DELETE FROM feature_library 
-                WHERE weight < 0.3 
-                AND last_seen < datetime('now', '-90 days')
-                AND frequency < 5
-            ''')
-            
-            deleted_count = cursor.rowcount
-            
-            # 标记不活跃的特征
-            cursor.execute('''
-                UPDATE feature_library 
-                SET is_active = FALSE 
-                WHERE last_seen < datetime('now', '-180 days')
-                AND weight < 0.5
-            ''')
-            
-            deactivated_count = cursor.rowcount
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 删除90天未使用的低权重特征
+                cursor.execute('''
+                    DELETE FROM feature_library 
+                    WHERE weight < 0.3 
+                    AND last_seen < DATE_SUB(NOW(), INTERVAL 90 DAY)
+                    AND frequency < 5
+                ''')
+                
+                deleted_count = cursor.rowcount
+                
+                # 标记不活跃的特征
+                cursor.execute('''
+                    UPDATE feature_library 
+                    SET is_active = FALSE 
+                    WHERE last_seen < DATE_SUB(NOW(), INTERVAL 180 DAY)
+                    AND weight < 0.5
+                ''')
+                
+                deactivated_count = cursor.rowcount
+                
+                conn.commit()
             
             self.logger.info(f"清理完成: 删除 {deleted_count} 个特征, 停用 {deactivated_count} 个特征")
             
@@ -430,20 +422,19 @@ class FeatureUpdater:
     
     def optimize_feature_library(self):
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 合并相似特征
-            self._merge_similar_features(cursor)
-            
-            # 重新计算特征重要性
-            self._recalculate_feature_importance(cursor)
-            
-            # 压缩特征库
-            self._compress_feature_library(cursor)
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 合并相似特征
+                self._merge_similar_features(cursor)
+                
+                # 重新计算特征重要性
+                self._recalculate_feature_importance(cursor)
+                
+                # 压缩特征库 (MySQL不需要VACUUM)
+                self._compress_feature_library(cursor)
+                
+                conn.commit()
             
             self.logger.info("特征库优化完成")
             
@@ -489,14 +480,14 @@ class FeatureUpdater:
                     if domain != representative:
                         cursor.execute('''
                             DELETE FROM feature_library 
-                            WHERE feature_type = 'malicious_domain' AND feature_value = ?
+                            WHERE feature_type = 'malicious_domain' AND feature_value = %s
                         ''', (domain,))
                 
                 # 更新代表性域名
                 cursor.execute('''
                     UPDATE feature_library 
-                    SET weight = ?, frequency = ? 
-                    WHERE feature_type = 'malicious_domain' AND feature_value = ?
+                    SET weight = %s, frequency = %s 
+                    WHERE feature_type = 'malicious_domain' AND feature_value = %s
                 ''', (merged_weight, merged_freq, representative))
     
     def _calculate_similarity(self, str1: str, str2: str) -> float:
@@ -528,16 +519,12 @@ class FeatureUpdater:
     def _compress_feature_library(self, cursor):
         # 删除重复特征
         cursor.execute('''
-            DELETE FROM feature_library 
-            WHERE id NOT IN (
-                SELECT MIN(id) 
-                FROM feature_library 
-                GROUP BY feature_type, feature_value
-            )
+            DELETE t1 FROM feature_library t1
+            INNER JOIN feature_library t2 
+            WHERE t1.id > t2.id 
+            AND t1.feature_type = t2.feature_type 
+            AND t1.feature_value = t2.feature_value
         ''')
-        
-        # 重建索引
-        cursor.execute('VACUUM')
     
     def _load_local_features(self):
         try:
@@ -557,19 +544,18 @@ class FeatureUpdater:
     
     def _save_features(self):
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 获取活跃特征
-            cursor.execute('''
-                SELECT feature_type, feature_value, weight, frequency 
-                FROM feature_library 
-                WHERE is_active = TRUE 
-                ORDER BY weight DESC, frequency DESC
-            ''')
-            
-            features = cursor.fetchall()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 获取活跃特征
+                cursor.execute('''
+                    SELECT feature_type, feature_value, weight, frequency 
+                    FROM feature_library 
+                    WHERE is_active = TRUE 
+                    ORDER BY weight DESC, frequency DESC
+                ''')
+                
+                features = cursor.fetchall()
             
             # 组织特征数据
             feature_data = defaultdict(list)
@@ -592,67 +578,64 @@ class FeatureUpdater:
     def _log_update_result(self, success: bool, message: str):
         """记录更新结果"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 创建更新日志表（如果不存在）
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS feature_update_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    success BOOLEAN NOT NULL,
-                    message TEXT,
-                    features_updated INTEGER DEFAULT 0,
-                    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # 统计更新的特征数量
-            cursor.execute('''
-                SELECT COUNT(*) FROM feature_library 
-                WHERE last_seen > datetime('now', '-1 hour')
-            ''')
-            features_updated = cursor.fetchone()[0]
-            
-            cursor.execute('''
-                INSERT INTO feature_update_log (success, message, features_updated)
-                VALUES (?, ?, ?)
-            ''', (success, message, features_updated))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 创建更新日志表（如果不存在）
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS feature_update_log (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        success BOOLEAN NOT NULL,
+                        message TEXT,
+                        features_updated INT DEFAULT 0,
+                        update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+                    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+                ''')
+                
+                # 统计更新的特征数量
+                cursor.execute('''
+                    SELECT COUNT(*) FROM feature_library 
+                    WHERE last_seen > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+                ''')
+                features_updated = cursor.fetchone()[0]
+                
+                cursor.execute('''
+                    INSERT INTO feature_update_log (success, message, features_updated)
+                    VALUES (%s, %s, %s)
+                ''', (success, message, features_updated))
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"记录更新日志失败: {e}")
     
     def get_update_status(self) -> Dict:
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 最近更新状态
-            cursor.execute('''
-                SELECT success, message, features_updated, update_time 
-                FROM feature_update_log 
-                ORDER BY update_time DESC 
-                LIMIT 1
-            ''')
-            
-            last_update = cursor.fetchone()
-            
-            # 特征库统计
-            cursor.execute('''
-                SELECT 
-                    feature_type,
-                    COUNT(*) as count,
-                    AVG(weight) as avg_weight
-                FROM feature_library 
-                WHERE is_active = TRUE
-                GROUP BY feature_type
-            ''')
-            
-            feature_stats = cursor.fetchall()
-            
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 最近更新状态
+                cursor.execute('''
+                    SELECT success, message, features_updated, update_time 
+                    FROM feature_update_log 
+                    ORDER BY update_time DESC 
+                    LIMIT 1
+                ''')
+                
+                last_update = cursor.fetchone()
+                
+                # 特征库统计
+                cursor.execute('''
+                    SELECT 
+                        feature_type,
+                        COUNT(*) as count,
+                        AVG(weight) as avg_weight
+                    FROM feature_library 
+                    WHERE is_active = TRUE
+                    GROUP BY feature_type
+                ''')
+                
+                feature_stats = cursor.fetchall()
             
             return {
                 'running': self.running,

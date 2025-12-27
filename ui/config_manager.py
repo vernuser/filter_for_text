@@ -6,23 +6,20 @@
 import json
 import os
 import shutil
-import sqlite3
 from datetime import datetime
 from typing import Dict, Any, Optional
 import logging
+from core.database import db_manager
 
 class ConfigManager:
     """配置管理器"""
     
-    def __init__(self, config_file: str = "config/settings.json", 
-                 db_file: str = "data/config.db"):
+    def __init__(self, config_file: str = "config/settings.json"):
         self.config_file = config_file
-        self.db_file = db_file
         self.logger = logging.getLogger(__name__)
         
         # 确保目录存在
         os.makedirs(os.path.dirname(config_file), exist_ok=True)
-        os.makedirs(os.path.dirname(db_file), exist_ok=True)
         
         # 初始化数据库
         self._init_database()
@@ -43,8 +40,6 @@ class ConfigManager:
             "https_filtering": True,
             "filter_mode": "smart",
             "filter_strictness": "medium",
-            "email_filter_enabled": True,
-            "attachment_scanning": True,
             "file_filter_enabled": True,
             "real_time_scanning": True,
             "scan_executables": True,
@@ -109,34 +104,33 @@ class ConfigManager:
     def _init_database(self):
         """初始化配置数据库"""
         try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            
-            # 创建配置历史表
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS config_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    config_data TEXT NOT NULL,
-                    change_type TEXT DEFAULT 'manual',
-                    user_id TEXT,
-                    description TEXT
-                )
-            ''')
-            
-            # 创建配置验证表
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS config_validation (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    config_key TEXT NOT NULL,
-                    validation_rule TEXT NOT NULL,
-                    error_message TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 创建配置历史表
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS config_history (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        config_data TEXT NOT NULL,
+                        change_type VARCHAR(50) DEFAULT 'manual',
+                        user_id VARCHAR(255),
+                        description TEXT
+                    )
+                ''')
+                
+                # 创建配置验证表
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS config_validation (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        config_key VARCHAR(255) NOT NULL,
+                        validation_rule TEXT NOT NULL,
+                        error_message TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"初始化配置数据库失败: {e}")
@@ -195,17 +189,16 @@ class ConfigManager:
                            change_type: str, user_id: str, description: str):
         """保存配置历史"""
         try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO config_history 
-                (config_data, change_type, user_id, description)
-                VALUES (?, ?, ?, ?)
-            ''', (json.dumps(config), change_type, user_id, description))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO config_history 
+                    (config_data, change_type, user_id, description)
+                    VALUES (%s, %s, %s, %s)
+                ''', (json.dumps(config), change_type, user_id, description))
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"保存配置历史失败: {e}")
@@ -354,28 +347,27 @@ class ConfigManager:
     def get_config_history(self, limit: int = 50) -> list:
         """获取配置历史"""
         try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT id, timestamp, change_type, user_id, description
-                FROM config_history
-                ORDER BY timestamp DESC
-                LIMIT ?
-            ''', (limit,))
-            
-            history = []
-            for row in cursor.fetchall():
-                history.append({
-                    "id": row[0],
-                    "timestamp": row[1],
-                    "change_type": row[2],
-                    "user_id": row[3],
-                    "description": row[4]
-                })
-            
-            conn.close()
-            return history
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT id, timestamp, change_type, user_id, description
+                    FROM config_history
+                    ORDER BY timestamp DESC
+                    LIMIT %s
+                ''', (limit,))
+                
+                history = []
+                for row in cursor.fetchall():
+                    history.append({
+                        "id": row[0],
+                        "timestamp": row[1],
+                        "change_type": row[2],
+                        "user_id": row[3],
+                        "description": row[4]
+                    })
+                
+                return history
             
         except Exception as e:
             self.logger.error(f"获取配置历史失败: {e}")
@@ -385,20 +377,20 @@ class ConfigManager:
                                    user_id: str = None) -> bool:
         """从历史记录恢复配置"""
         try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT config_data FROM config_history WHERE id = ?
-            ''', (history_id,))
-            
-            row = cursor.fetchone()
-            if not row:
-                self.logger.error(f"未找到历史记录: {history_id}")
-                return False
-            
-            config_data = json.loads(row[0])
-            conn.close()
+            config_data = None
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT config_data FROM config_history WHERE id = %s
+                ''', (history_id,))
+                
+                row = cursor.fetchone()
+                if not row:
+                    self.logger.error(f"未找到历史记录: {history_id}")
+                    return False
+                
+                config_data = json.loads(row[0])
             
             return self.save_config(config_data, "restore", user_id, 
                                   f"从历史记录恢复配置: {history_id}")

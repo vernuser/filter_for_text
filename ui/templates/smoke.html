@@ -34,7 +34,6 @@
                     <button class="reset-btn" onclick="loadSample('text')">文本示例</button>
                     <button class="reset-btn" onclick="loadSample('url')">网址示例</button>
                     <button class="reset-btn" onclick="loadSample('ip')">IP示例</button>
-                    <button class="reset-btn" onclick="loadSample('domain')">域名示例</button>
                 </div>
                 <pre id="sampleBox" style="background:#0f1226; color:#cfd3ff; padding:12px; border-radius:12px; margin-top:8px; white-space:pre-wrap; min-height:100px;"></pre>
             </div>
@@ -43,7 +42,7 @@
         <div style="margin-top:24px;">
             <div style="display:flex; align-items:center; justify-content:space-between;">
                 <h3>结果</h3>
-                <a href="/validation" class="logout-btn">前往自学习与安全验证</a>
+                <a href="/validation" class="logout-btn">前往安全验证</a>
             </div>
             <div id="resultBox" style="background:#0f1226; color:#cfd3ff; padding:12px; border-radius:12px; white-space:pre-wrap; font-family:Consolas,Monaco,monospace;"></div>
         </div>
@@ -89,7 +88,6 @@
         const items = raw.split(/\n+/).map(s=>s.trim()).filter(s=>s.length>0);
         const detectType = (s)=>{
             if(/^[0-9]{1,3}(\.[0-9]{1,3}){3}$/.test(s)) return 'ip';
-            if(/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(s) && !/^https?:\/\//i.test(s)) return 'domain';
             if(/https?:\/\//i.test(s)) return 'url';
             return 'text';
         };

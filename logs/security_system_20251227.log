@@ -1,0 +1,28 @@
+2025-12-27 13:55:48,745 - app - INFO - 安全防护系统初始化开始
+2025-12-27 13:55:48,746 - app - INFO - 开始初始化系统组件
+2025-12-27 13:55:48,869 - core.security_protection - INFO - 威胁特征库加载完成
+2025-12-27 13:55:48,870 - core.security_protection - INFO - 安全防护模块初始化完成
+2025-12-27 13:55:48,871 - core.access_control - INFO - 访问控制模块初始化完成
+2025-12-27 13:55:48,874 - modules.time_controller - INFO - 加载了 0 条时间规则
+2025-12-27 13:55:48,874 - modules.time_controller - INFO - 时间控制模块初始化完成
+2025-12-27 13:55:48,879 - core.database - INFO - 表 filter_logs 创建/检查完成
+2025-12-27 13:55:48,881 - core.database - INFO - 表 blacklist_items 创建/检查完成
+2025-12-27 13:55:48,882 - core.database - INFO - 表 training_samples 创建/检查完成
+2025-12-27 13:55:48,883 - core.database - INFO - 表 users 创建/检查完成
+2025-12-27 13:55:48,884 - core.database - INFO - 表 sessions 创建/检查完成
+2025-12-27 13:55:48,890 - ml.learning_engine - INFO - 模型已加载
+2025-12-27 13:55:48,890 - ml.learning_engine - INFO - 特征库已加载
+2025-12-27 13:55:49,031 - security.protection - INFO - 文件已添加到完整性检查: d:\college\大四\课设\filter_for_text\config\settings.py
+2025-12-27 13:55:49,035 - security.protection - INFO - 文件已添加到完整性检查: d:\college\大四\课设\filter_for_text\core\filter_engine.py
+2025-12-27 13:55:49,038 - security.protection - INFO - 文件已添加到完整性检查: d:\college\大四\课设\filter_for_text\security\protection.py
+2025-12-27 13:55:49,039 - core.access_control - INFO - 访问控制模块初始化完成
+2025-12-27 13:55:49,042 - extensions.time_control - INFO - 已加载 5 条时间规则
+2025-12-27 13:55:49,045 - core.database - INFO - 表 filter_logs 创建/检查完成
+2025-12-27 13:55:49,046 - core.database - INFO - 表 blacklist_items 创建/检查完成
+2025-12-27 13:55:49,047 - core.database - INFO - 表 training_samples 创建/检查完成
+2025-12-27 13:55:49,049 - core.database - INFO - 表 users 创建/检查完成
+2025-12-27 13:55:49,050 - core.database - INFO - 表 sessions 创建/检查完成
+2025-12-27 13:55:49,056 - ml.learning_engine - INFO - 模型已加载
+2025-12-27 13:55:49,056 - ml.learning_engine - INFO - 特征库已加载
+2025-12-27 13:55:49,060 - app - INFO - 组件依赖关系设置完成
+2025-12-27 13:55:49,060 - app - INFO - 系统组件初始化完成

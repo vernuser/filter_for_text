@@ -3,7 +3,6 @@
 """
 import os
 import time
-import sqlite3
 import logging
 import threading
 import tkinter as tk
@@ -12,14 +11,13 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 import psutil
 import subprocess
-from config.settings import DATABASE_PATH
+from core.database import db_manager
 
 class TimeController:
     """时间控制管理器"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.db_path = DATABASE_PATH
         self.monitoring_active = False
         self.monitor_thread = None
         self.warning_window = None
@@ -37,79 +35,37 @@ class TimeController:
     
     def _init_time_database(self):
         """初始化时间控制数据库"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # 时间规则表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS time_rules (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                rule_type TEXT NOT NULL,
-                start_time TEXT,
-                end_time TEXT,
-                duration_limit INTEGER,
-                days_of_week TEXT,
-                is_active BOOLEAN DEFAULT TRUE,
-                created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # 用户使用记录表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS usage_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                session_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                session_end TIMESTAMP,
-                duration INTEGER,
-                forced_logout BOOLEAN DEFAULT FALSE,
-                logout_reason TEXT
-            )
-        ''')
-        
-        # 违规记录表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS violation_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                violation_type TEXT NOT NULL,
-                description TEXT,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                action_taken TEXT
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
+        try:
+            db_manager.init_mysql_tables()
+        except Exception as e:
+            self.logger.error(f"初始化时间数据库失败: {e}")
     
     def _load_time_rules(self):
         """加载时间规则"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('SELECT * FROM time_rules WHERE is_active = TRUE')
-            rules = cursor.fetchall()
-            
-            for rule in rules:
-                rule_id, user_id, rule_type, start_time, end_time, duration_limit, days_of_week, is_active, created_time = rule
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
                 
-                if user_id not in self.time_rules:
-                    self.time_rules[user_id] = []
+                cursor.execute('SELECT * FROM time_rules WHERE is_active = TRUE')
+                rules = cursor.fetchall()
                 
-                self.time_rules[user_id].append({
-                    'id': rule_id,
-                    'type': rule_type,
-                    'start_time': start_time,
-                    'end_time': end_time,
-                    'duration_limit': duration_limit,
-                    'days_of_week': days_of_week.split(',') if days_of_week else [],
-                    'is_active': bool(is_active)
-                })
-            
-            conn.close()
-            self.logger.info(f"已加载 {len(rules)} 条时间规则")
+                for rule in rules:
+                    rule_id, user_id, rule_type, start_time, end_time, duration_limit, days_of_week, is_active, created_time = rule
+                    
+                    if user_id not in self.time_rules:
+                        self.time_rules[user_id] = []
+                    
+                    self.time_rules[user_id].append({
+                        'id': rule_id,
+                        'type': rule_type,
+                        'start_time': start_time,
+                        'end_time': end_time,
+                        'duration_limit': duration_limit,
+                        'days_of_week': days_of_week.split(',') if days_of_week else [],
+                        'is_active': bool(is_active)
+                    })
+                
+                self.logger.info(f"已加载 {len(rules)} 条时间规则")
             
         except Exception as e:
             self.logger.error(f"加载时间规则失败: {e}")
@@ -124,23 +80,22 @@ class TimeController:
             **kwargs: 规则参数
         """
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO time_rules (user_id, rule_type, start_time, end_time, duration_limit, days_of_week)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                user_id,
-                rule_type,
-                kwargs.get('start_time'),
-                kwargs.get('end_time'),
-                kwargs.get('duration_limit'),
-                ','.join(kwargs.get('days_of_week', []))
-            ))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO time_rules (user_id, rule_type, start_time, end_time, duration_limit, days_of_week)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (
+                    user_id,
+                    rule_type,
+                    kwargs.get('start_time'),
+                    kwargs.get('end_time'),
+                    kwargs.get('duration_limit'),
+                    ','.join(kwargs.get('days_of_week', []))
+                ))
+                
+                conn.commit()
             
             # 重新加载规则
             self._load_time_rules()
@@ -167,17 +122,16 @@ class TimeController:
                 }
             
             # 记录会话开始
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO usage_records (user_id, session_start)
-                VALUES (?, ?)
-            ''', (user_id, current_time))
-            
-            session_id = cursor.lastrowid
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO usage_records (user_id, session_start)
+                    VALUES (%s, %s)
+                ''', (user_id, current_time))
+                
+                session_id = cursor.lastrowid
+                conn.commit()
             
             # 添加到活跃会话
             self.user_sessions[user_id] = {
@@ -261,18 +215,16 @@ class TimeController:
     def _get_daily_usage(self, user_id: str, date) -> int:
         """获取用户当日使用时长（分钟）"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT SUM(duration) FROM usage_records 
-                WHERE user_id = ? AND DATE(session_start) = ?
-            ''', (user_id, date))
-            
-            result = cursor.fetchone()[0]
-            conn.close()
-            
-            return result or 0
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT SUM(duration) FROM usage_records 
+                    WHERE user_id = %s AND DATE(session_start) = %s
+                ''', (user_id, date))
+                
+                result = cursor.fetchone()[0]
+                return result or 0
             
         except Exception as e:
             self.logger.error(f"获取每日使用时长失败: {e}")
@@ -442,19 +394,18 @@ class TimeController:
             current_time = datetime.now()
             
             # 更新数据库记录
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            duration = (current_time - session['start_time']).total_seconds() / 60
-            
-            cursor.execute('''
-                UPDATE usage_records 
-                SET session_end = ?, duration = ?, forced_logout = TRUE, logout_reason = ?
-                WHERE id = ?
-            ''', (current_time, duration, reason, session['session_id']))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                duration = (current_time - session['start_time']).total_seconds() / 60
+                
+                cursor.execute('''
+                    UPDATE usage_records 
+                    SET session_end = %s, duration = %s, forced_logout = TRUE, logout_reason = %s
+                    WHERE id = %s
+                ''', (current_time, duration, reason, session['session_id']))
+                
+                conn.commit()
             
             # 记录违规
             self._log_violation(user_id, 'forced_logout', reason, 'user_logged_out')
@@ -518,16 +469,15 @@ class TimeController:
     def _log_violation(self, user_id: str, violation_type: str, description: str, action_taken: str):
         """记录违规行为"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO violation_records (user_id, violation_type, description, action_taken)
-                VALUES (?, ?, ?, ?)
-            ''', (user_id, violation_type, description, action_taken))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO violation_records (user_id, violation_type, description, action_taken)
+                    VALUES (%s, %s, %s, %s)
+                ''', (user_id, violation_type, description, action_taken))
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"记录违规行为失败: {e}")
@@ -542,19 +492,18 @@ class TimeController:
             current_time = datetime.now()
             
             # 更新数据库记录
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            duration = (current_time - session['start_time']).total_seconds() / 60
-            
-            cursor.execute('''
-                UPDATE usage_records 
-                SET session_end = ?, duration = ?
-                WHERE id = ?
-            ''', (current_time, duration, session['session_id']))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                duration = (current_time - session['start_time']).total_seconds() / 60
+                
+                cursor.execute('''
+                    UPDATE usage_records 
+                    SET session_end = %s, duration = %s
+                    WHERE id = %s
+                ''', (current_time, duration, session['session_id']))
+                
+                conn.commit()
             
             # 从活跃会话中移除
             del self.user_sessions[user_id]
@@ -569,49 +518,47 @@ class TimeController:
     def get_usage_statistics(self, user_id: str = None, days: int = 7) -> Dict:
         """获取使用统计"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 构建查询条件
-            where_clause = "WHERE session_start >= datetime('now', '-{} days')".format(days)
-            if user_id:
-                where_clause += f" AND user_id = '{user_id}'"
-            
-            # 总使用时长
-            cursor.execute(f'''
-                SELECT SUM(duration), COUNT(*) FROM usage_records {where_clause}
-            ''')
-            total_duration, total_sessions = cursor.fetchone()
-            
-            # 每日使用统计
-            cursor.execute(f'''
-                SELECT DATE(session_start), SUM(duration), COUNT(*)
-                FROM usage_records {where_clause}
-                GROUP BY DATE(session_start)
-                ORDER BY DATE(session_start)
-            ''')
-            daily_stats = cursor.fetchall()
-            
-            # 违规统计
-            cursor.execute(f'''
-                SELECT violation_type, COUNT(*)
-                FROM violation_records 
-                WHERE timestamp >= datetime('now', '-{days} days')
-                {f"AND user_id = '{user_id}'" if user_id else ""}
-                GROUP BY violation_type
-            ''')
-            violation_stats = dict(cursor.fetchall())
-            
-            conn.close()
-            
-            return {
-                'total_duration': total_duration or 0,
-                'total_sessions': total_sessions or 0,
-                'daily_statistics': daily_stats,
-                'violation_statistics': violation_stats,
-                'active_sessions': len(self.user_sessions),
-                'monitoring_active': self.monitoring_active
-            }
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 构建查询条件
+                where_clause = f"WHERE session_start >= DATE_SUB(NOW(), INTERVAL {days} DAY)"
+                if user_id:
+                    where_clause += f" AND user_id = '{user_id}'"
+                
+                # 总使用时长
+                cursor.execute(f'''
+                    SELECT SUM(duration), COUNT(*) FROM usage_records {where_clause}
+                ''')
+                total_duration, total_sessions = cursor.fetchone()
+                
+                # 每日使用统计
+                cursor.execute(f'''
+                    SELECT DATE(session_start), SUM(duration), COUNT(*)
+                    FROM usage_records {where_clause}
+                    GROUP BY DATE(session_start)
+                    ORDER BY DATE(session_start)
+                ''')
+                daily_stats = cursor.fetchall()
+                
+                # 违规统计
+                cursor.execute(f'''
+                    SELECT violation_type, COUNT(*)
+                    FROM violation_records 
+                    WHERE timestamp >= DATE_SUB(NOW(), INTERVAL {days} DAY)
+                    {f"AND user_id = '{user_id}'" if user_id else ""}
+                    GROUP BY violation_type
+                ''')
+                violation_stats = dict(cursor.fetchall())
+                
+                return {
+                    'total_duration': total_duration or 0,
+                    'total_sessions': total_sessions or 0,
+                    'daily_statistics': daily_stats,
+                    'violation_statistics': violation_stats,
+                    'active_sessions': len(self.user_sessions),
+                    'monitoring_active': self.monitoring_active
+                }
             
         except Exception as e:
             self.logger.error(f"获取使用统计失败: {e}")

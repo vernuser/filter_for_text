@@ -1,38 +1,33 @@
-"""
-机器学习自学习引擎 - 特征提取、模型训练、特征库升级
-"""
+#自学习
 import os
 import json
+import joblib
 import pickle
-import sqlite3
-import logging
-import hashlib
 import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional, Any
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from typing import List, Dict, Tuple, Optional
+import logging
+from datetime import datetime
 import jieba
 import re
 from collections import Counter
-from config.settings import DATABASE_PATH, ML_MODEL_PATH, ML_FEATURE_PATH, DATABASE_TYPE
+from config.settings import ML_MODEL_PATH, ML_FEATURE_PATH, DATABASE_TYPE
 from urllib.parse import urlparse
 from core.database import db_manager
 from .deep_models import URLCharMLP, TextTFIDFMLP
 
 class LearningEngine:
-    """机器学习自学习引擎"""
+    """特征分析引擎"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.db_path = DATABASE_PATH
         self.model_path = ML_MODEL_PATH
         self.feature_path = ML_FEATURE_PATH
         
@@ -45,7 +40,7 @@ class LearningEngine:
         self.url_classifier = None
         self.feature_extractor = None
         self.vectorizer = None
-        # 轻量深度模型（可选）
+        # 轻量深度模型
         self.url_deep_model = None
         self.text_deep_model = None
         self.ip_deep_model = None
@@ -66,119 +61,22 @@ class LearningEngine:
                 db_manager.init_mysql_tables()
         except Exception:
             pass
-        self._init_ml_database()
         self._load_models()
         self._load_features()
-
-    def _connect_db(self):
-        """统一创建SQLite连接，设置WAL与busy_timeout以缓解锁表"""
-        conn = sqlite3.connect(self.db_path, timeout=5.0)
-        try:
-            conn.execute('PRAGMA journal_mode=WAL;')
-            conn.execute('PRAGMA busy_timeout=5000;')
-        except Exception as e:
-            self.logger.warning(f"设置SQLite PRAGMA失败: {e}")
-        return conn
-    
-    def _init_ml_database(self):
-        """初始化机器学习数据库"""
-        conn = self._connect_db()
-        cursor = conn.cursor()
-        
-        # 训练样本表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS training_samples (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                content TEXT NOT NULL,
-                content_type TEXT NOT NULL,
-                label INTEGER NOT NULL,
-                confidence REAL DEFAULT 1.0,
-                source TEXT,
-                features TEXT,
-                created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                used_for_training BOOLEAN DEFAULT FALSE
-            )
-        ''')
-        
-        # 模型性能表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS model_performance (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                model_type TEXT NOT NULL,
-                accuracy REAL,
-                precision_score REAL,
-                recall_score REAL,
-                f1_score REAL,
-                training_samples INTEGER,
-                model_version TEXT,
-                created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # 特征库表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS feature_library (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                feature_type TEXT NOT NULL,
-                feature_value TEXT NOT NULL,
-                weight REAL DEFAULT 1.0,
-                frequency INTEGER DEFAULT 1,
-                last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_active BOOLEAN DEFAULT TRUE
-            )
-        ''')
-        
-        # 预测结果表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS prediction_results (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                content TEXT NOT NULL,
-                content_type TEXT NOT NULL,
-                predicted_label INTEGER,
-                confidence REAL,
-                actual_label INTEGER,
-                is_correct BOOLEAN,
-                model_version TEXT,
-                prediction_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
     
     def add_training_sample(self, content: str, content_type: str, label: int, 
                           confidence: float = 1.0, source: Optional[str] = None) -> bool:
-        """
-        添加训练样本
-        
-        Args:
-            content: 内容文本
-            content_type: 内容类型 ('text', 'url', 'email')
-            label: 标签 (0: 正常, 1: 恶意)
-            confidence: 置信度
-            source: 来源
-        """
         try:
             # 提取特征
             features = self._extract_features(content, content_type)
             
-            conn = self._connect_db()
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO training_samples (content, content_type, label, confidence, source, features)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (content, content_type, label, confidence, source, json.dumps(features)))
-            conn.commit()
-            conn.close()
-            try:
-                if self.db_type == 'mysql':
-                    content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
-                    db_manager.execute_query(
-                        'INSERT IGNORE INTO training_samples (content, content_type, content_hash, label, confidence, source, features) VALUES (%s, %s, %s, %s, %s, %s, %s)',
-                        params=(content, content_type, content_hash, label, float(confidence), source, json.dumps(features))
-                    )
-            except Exception as e:
-                self.logger.error(f"写入MySQL训练样本失败: {e}")
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO training_samples (content, content_type, label, confidence, source, features)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (content, content_type, label, confidence, source, json.dumps(features)))
+                conn.commit()
             
             # 更新特征库
             self._update_feature_library(features, label)
@@ -345,24 +243,24 @@ class LearningEngine:
     def _update_feature_library(self, features: Dict, label: int):
         """更新特征库"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            for feature_name, feature_value in features.items():
-                # 计算特征权重
-                weight = 1.0 if label == 1 else 0.5  # 恶意样本权重更高
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
                 
-                cursor.execute('''
-                    INSERT OR REPLACE INTO feature_library 
-                    (feature_type, feature_value, weight, frequency, last_seen)
-                    VALUES (?, ?, ?, 
-                           COALESCE((SELECT frequency FROM feature_library 
-                                   WHERE feature_type = ? AND feature_value = ?), 0) + 1,
-                           CURRENT_TIMESTAMP)
-                ''', (feature_name, str(feature_value), weight, feature_name, str(feature_value)))
-            
-            conn.commit()
-            conn.close()
+                for feature_name, feature_value in features.items():
+                    # 计算特征权重
+                    weight = 1.0 if label == 1 else 0.5  # 恶意样本权重更高
+                    
+                    # MySQL ON DUPLICATE KEY UPDATE syntax
+                    cursor.execute('''
+                        INSERT INTO feature_library 
+                        (feature_type, feature_value, weight, frequency, last_seen)
+                        VALUES (%s, %s, %s, 1, CURRENT_TIMESTAMP)
+                        ON DUPLICATE KEY UPDATE
+                        frequency = frequency + 1,
+                        last_seen = CURRENT_TIMESTAMP
+                    ''', (feature_name, str(feature_value), weight))
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"更新特征库失败: {e}")
@@ -434,17 +332,16 @@ class LearningEngine:
     def _get_training_data(self) -> List[Dict]:
         """获取训练数据"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT content, content_type, label, confidence, features
-                FROM training_samples
-                ORDER BY created_time DESC
-            ''')
-            
-            rows = cursor.fetchall()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT content, content_type, label, confidence, features
+                    FROM training_samples
+                    ORDER BY created_time DESC
+                ''')
+                
+                rows = cursor.fetchall()
             
             training_data = []
             for row in rows:
@@ -861,23 +758,22 @@ class LearningEngine:
     def _record_prediction(self, content: str, content_type: str, prediction: Dict):
         """记录预测结果"""
         try:
-            conn = self._connect_db()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO prediction_results 
-                (content, content_type, predicted_label, confidence, model_version)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (
-                content,
-                content_type,
-                1 if prediction['is_malicious'] else 0,
-                prediction['confidence'],
-                'v1.0'
-            ))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO prediction_results 
+                    (content, content_type, predicted_label, confidence, model_version)
+                    VALUES (%s, %s, %s, %s, %s)
+                ''', (
+                    content,
+                    content_type,
+                    1 if prediction['is_malicious'] else 0,
+                    prediction['confidence'],
+                    'v1.0'
+                ))
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"记录预测结果失败: {e}")
@@ -885,28 +781,27 @@ class LearningEngine:
     def update_prediction_feedback(self, prediction_id: int, actual_label: int):
         """更新预测反馈"""
         try:
-            conn = self._connect_db()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                UPDATE prediction_results 
-                SET actual_label = ?, is_correct = (predicted_label = ?)
-                WHERE id = ?
-            ''', (actual_label, actual_label, prediction_id))
-            
-            # 获取内容用于重新训练
-            cursor.execute('''
-                SELECT content, content_type FROM prediction_results WHERE id = ?
-            ''', (prediction_id,))
-            
-            result = cursor.fetchone()
-            if result:
-                content, content_type = result
-                # 添加为训练样本
-                self.add_training_sample(content, content_type, actual_label, source='feedback')
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    UPDATE prediction_results 
+                    SET actual_label = %s, is_correct = (predicted_label = %s)
+                    WHERE id = %s
+                ''', (actual_label, actual_label, prediction_id))
+                
+                # 获取内容用于重新训练
+                cursor.execute('''
+                    SELECT content, content_type FROM prediction_results WHERE id = %s
+                ''', (prediction_id,))
+                
+                result = cursor.fetchone()
+                if result:
+                    content, content_type = result
+                    # 添加为训练样本
+                    self.add_training_sample(content, content_type, actual_label, source='feedback')
+                
+                conn.commit()
             
             self.logger.info(f"已更新预测反馈: {prediction_id}")
             
@@ -916,28 +811,26 @@ class LearningEngine:
     def _check_retrain_condition(self):
         """检查是否需要重新训练"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 检查新样本数量
-            cursor.execute('''
-                SELECT COUNT(*) FROM training_samples 
-                WHERE used_for_training = FALSE
-            ''')
-            new_samples = cursor.fetchone()[0]
-            
-            # 检查模型准确率
-            cursor.execute('''
-                SELECT AVG(CASE WHEN is_correct THEN 1.0 ELSE 0.0 END) as accuracy
-                FROM prediction_results 
-                WHERE actual_label IS NOT NULL 
-                AND prediction_time > datetime('now', '-7 days')
-            ''')
-            
-            result = cursor.fetchone()
-            current_accuracy = result[0] if result[0] is not None else 1.0
-            
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 检查新样本数量
+                cursor.execute('''
+                    SELECT COUNT(*) FROM training_samples 
+                    WHERE used_for_training = FALSE
+                ''')
+                new_samples = cursor.fetchone()[0]
+                
+                # 检查模型准确率
+                cursor.execute('''
+                    SELECT AVG(CASE WHEN is_correct THEN 1.0 ELSE 0.0 END) as accuracy
+                    FROM prediction_results 
+                    WHERE actual_label IS NOT NULL 
+                    AND prediction_time > DATE_SUB(NOW(), INTERVAL 7 DAY)
+                ''')
+                
+                result = cursor.fetchone()
+                current_accuracy = result[0] if result and result[0] is not None else 1.0
             
             # 判断是否需要重新训练
             if (new_samples >= 50 or current_accuracy < self.retrain_threshold):
@@ -1005,24 +898,23 @@ class LearningEngine:
     def _record_model_performance(self, results: Dict):
         """记录模型性能"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            for model_type, result in results.items():
-                if 'error' not in result:
-                    cursor.execute('''
-                        INSERT INTO model_performance 
-                        (model_type, accuracy, training_samples, model_version)
-                        VALUES (?, ?, ?, ?)
-                    ''', (
-                        model_type,
-                        result.get('accuracy', 0),
-                        result.get('training_samples', 0),
-                        'v1.0'
-                    ))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                for model_type, result in results.items():
+                    if 'error' not in result:
+                        cursor.execute('''
+                            INSERT INTO model_performance 
+                            (model_type, accuracy, training_samples, model_version)
+                            VALUES (%s, %s, %s, %s)
+                        ''', (
+                            model_type,
+                            result.get('accuracy', 0),
+                            result.get('training_samples', 0),
+                            'v1.0'
+                        ))
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"记录模型性能失败: {e}")
@@ -1030,35 +922,34 @@ class LearningEngine:
     def get_learning_statistics(self) -> Dict:
         """获取学习统计信息"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 训练样本统计
-            cursor.execute('''
-                SELECT content_type, label, COUNT(*) 
-                FROM training_samples 
-                GROUP BY content_type, label
-            ''')
-            sample_stats = cursor.fetchall()
-            
-            # 模型性能统计
-            cursor.execute('''
-                SELECT model_type, accuracy, training_samples 
-                FROM model_performance 
-                ORDER BY created_time DESC 
-                LIMIT 10
-            ''')
-            performance_stats = cursor.fetchall()
-            
-            # 预测准确率
-            cursor.execute('''
-                SELECT AVG(CASE WHEN is_correct THEN 1.0 ELSE 0.0 END) as accuracy
-                FROM prediction_results 
-                WHERE actual_label IS NOT NULL
-            ''')
-            prediction_accuracy = cursor.fetchone()[0] or 0
-            
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 训练样本统计
+                cursor.execute('''
+                    SELECT content_type, label, COUNT(*) 
+                    FROM training_samples 
+                    GROUP BY content_type, label
+                ''')
+                sample_stats = cursor.fetchall()
+                
+                # 模型性能统计
+                cursor.execute('''
+                    SELECT model_type, accuracy, training_samples 
+                    FROM model_performance 
+                    ORDER BY created_time DESC 
+                    LIMIT 10
+                ''')
+                performance_stats = cursor.fetchall()
+                
+                # 预测准确率
+                cursor.execute('''
+                    SELECT AVG(CASE WHEN is_correct THEN 1.0 ELSE 0.0 END) as accuracy
+                    FROM prediction_results 
+                    WHERE actual_label IS NOT NULL
+                ''')
+                result = cursor.fetchone()
+                prediction_accuracy = result[0] if result and result[0] is not None else 0
             
             return {
                 'sample_statistics': sample_stats,
@@ -1077,15 +968,15 @@ class LearningEngine:
     
     def is_known_malicious(self, content: str, content_type: str) -> bool:
         try:
-            conn = self._connect_db()
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT content FROM training_samples 
-                WHERE label = 1 AND content_type = ? 
-                ORDER BY created_time DESC LIMIT 200
-            ''', (content_type,))
-            rows = cursor.fetchall()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT content FROM training_samples 
+                    WHERE label = 1 AND content_type = %s 
+                    ORDER BY created_time DESC LIMIT 200
+                ''', (content_type,))
+                rows = cursor.fetchall()
+            
             if not rows:
                 return False
             text = content or ''
@@ -1100,11 +991,11 @@ class LearningEngine:
 
     def is_in_training_samples(self, content: str) -> bool:
         try:
-            conn = self._connect_db()
-            cursor = conn.cursor()
-            cursor.execute('SELECT content FROM training_samples ORDER BY created_time DESC LIMIT 500')
-            rows = cursor.fetchall()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT content FROM training_samples ORDER BY created_time DESC LIMIT 500')
+                rows = cursor.fetchall()
+            
             if not rows:
                 return False
             text = content or ''
@@ -1120,18 +1011,17 @@ class LearningEngine:
     def export_feature_library(self) -> Dict:
         """导出特征库"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT feature_type, feature_value, weight, frequency 
-                FROM feature_library 
-                WHERE is_active = TRUE
-                ORDER BY weight DESC, frequency DESC
-            ''')
-            
-            features = cursor.fetchall()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT feature_type, feature_value, weight, frequency 
+                    FROM feature_library 
+                    WHERE is_active = TRUE
+                    ORDER BY weight DESC, frequency DESC
+                ''')
+                
+                features = cursor.fetchall()
             
             feature_library = {}
             for feature_type, feature_value, weight, frequency in features:

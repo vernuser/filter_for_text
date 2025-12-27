@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系统仪表盘 - 智能分析平台</title>
+    <title>系统仪表盘 - 网络内容安全平台</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
@@ -11,10 +11,10 @@
         <!-- 背景粒子效果 -->
         <div class="particles-bg"></div>
         
-        <!-- 左下角助手模型 -->
+        <!-- 状态指示器 -->
         <div class="assistant-model" id="assistantModel">
             <div class="model-container">
-                <img src="{{ url_for('static', filename='images/assistant.svg') }}" alt="Assistant" class="assistant-image">
+                <img src="{{ url_for('static', filename='images/assistant.svg') }}" alt="System Status" class="assistant-image">
                 <div class="model-pulse"></div>
             </div>
             
@@ -32,10 +32,6 @@
                     <div class="menu-icon">🌐</div>
                     <div class="menu-text">IP</div>
                 </div>
-                <div class="menu-item" data-type="domain">
-                    <div class="menu-icon">🏠</div>
-                    <div class="menu-text">域名</div>
-                </div>
             </div>
         </div>
         
@@ -43,7 +39,7 @@
         <div class="main-content">
             <!-- 顶部标题 -->
             <div class="header">
-                <h1 class="title">智能内容分析平台</h1>
+                <h1 class="title">网络内容安全分析系统</h1>
                 <div class="user-info">
                     <span>欢迎，{{ username }}</span>
                     <a href="/logout" class="logout-btn">退出</a>

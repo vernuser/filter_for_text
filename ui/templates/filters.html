@@ -57,34 +57,6 @@
             </div>
         </div>
 
-        <!-- 邮件过滤 -->
-        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
-            <div class="flex items-center justify-between mb-4">
-                <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
-                    <i class="fas fa-envelope text-white text-xl"></i>
-                </div>
-                <div class="relative">
-                    <input type="checkbox" id="emailFilterSwitch" 
-                           {{ 'checked' if filter_status.email_filter else '' }}
-                           onchange="toggleFilter('email', this.checked)"
-                           class="sr-only">
-                    <label for="emailFilterSwitch" class="flex items-center cursor-pointer">
-                        <div class="relative">
-                            <div class="block bg-gray-600 w-14 h-8 rounded-full"></div>
-                            <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform {{ 'translate-x-6' if filter_status.email_filter else '' }}"></div>
-                        </div>
-                    </label>
-                </div>
-            </div>
-            <h3 class="text-white text-lg font-semibold mb-2">邮件过滤</h3>
-            <p class="text-gray-400 text-sm">检测垃圾邮件和钓鱼邮件</p>
-            <div class="mt-4 flex items-center">
-                <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-500/20 text-green-400' if filter_status.email_filter else 'bg-red-500/20 text-red-400' }}">
-                    {{ '已启用' if filter_status.email_filter else '已禁用' }}
-                </span>
-            </div>
-        </div>
-
         <!-- 文件过滤 -->
         <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
             <div class="flex items-center justify-between mb-4">

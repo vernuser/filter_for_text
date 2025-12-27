@@ -10,7 +10,7 @@ DATA_DIR = os.path.join(BASE_DIR, 'data')
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
 
 # 数据库配置
-DATABASE_PATH = os.path.join(DATA_DIR, 'security_filter.db')
+# 仅使用 MySQL
 
 # MySQL数据库配置
 MYSQL_CONFIG = {
@@ -22,7 +22,7 @@ MYSQL_CONFIG = {
     'autocommit': True
 }
 
-# 数据库类型选择 ('sqlite' 或 'mysql')
+# 数据库类型选择
 DATABASE_TYPE = 'mysql'
 
 # 黑名单配置
@@ -38,7 +38,6 @@ FILTER_CONFIG = {
     'enable_text_filter': True,
     'enable_url_filter': True,
     'enable_ip_filter': True,
-    'enable_email_filter': True,
     'enable_file_filter': True,
     'sensitivity_level': 'medium',  # low, medium, high
     'auto_update_interval': 24,  # 小时

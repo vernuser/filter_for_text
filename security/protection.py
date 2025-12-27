@@ -1,12 +1,9 @@
-"""
-安全保护模块 - 防篡改、访问控制、完整性检查
-"""
+#防篡改、访问控制、完整性检查
 import os
 import hashlib
 import hmac
 import json
 import time
-import sqlite3
 import logging
 import threading
 import psutil
@@ -18,14 +15,13 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from config.settings import DATABASE_PATH
+from core.database import db_manager
 
 class SecurityProtection:
-    """安全保护管理器"""
+    """安全保护管理器，负责文件完整性监控、访问控制和进程保护"""
     
     def __init__(self, master_password: str = None):
         self.logger = logging.getLogger(__name__)
-        self.db_path = DATABASE_PATH
         self.master_password = master_password or "default_security_key"
         self.encryption_key = self._derive_key(self.master_password)
         self.cipher_suite = Fernet(self.encryption_key)
@@ -42,9 +38,8 @@ class SecurityProtection:
         
         self._init_security_database()
         self._setup_critical_files()
-    
+    #加密setting.py文件，对其进行sha256加密
     def _derive_key(self, password: str) -> bytes:
-        """从密码派生加密密钥"""
         password_bytes = password.encode()
         salt = b'security_filter_salt'  # 在生产环境中应使用随机盐
         kdf = PBKDF2HMAC(
@@ -58,63 +53,65 @@ class SecurityProtection:
     
     def _init_security_database(self):
         """初始化安全数据库"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # 文件完整性表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS file_integrity (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                file_path TEXT UNIQUE NOT NULL,
-                file_hash TEXT NOT NULL,
-                last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_critical BOOLEAN DEFAULT FALSE,
-                status TEXT DEFAULT 'valid'
-            )
-        ''')
-        
-        # 访问日志表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS access_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT,
-                action TEXT NOT NULL,
-                resource TEXT,
-                result TEXT,
-                ip_address TEXT,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                details TEXT
-            )
-        ''')
-        
-        # 安全事件表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS security_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                event_type TEXT NOT NULL,
-                severity INTEGER DEFAULT 1,
-                description TEXT,
-                source TEXT,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                handled BOOLEAN DEFAULT FALSE
-            )
-        ''')
-        
-        # 用户会话表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS user_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT UNIQUE NOT NULL,
-                user_id TEXT NOT NULL,
-                login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                ip_address TEXT,
-                status TEXT DEFAULT 'active'
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
+        try:
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 文件完整性表
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS file_integrity (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        file_path VARCHAR(255) UNIQUE NOT NULL,
+                        file_hash TEXT NOT NULL,
+                        last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        is_critical BOOLEAN DEFAULT FALSE,
+                        status TEXT
+                    )
+                ''')
+                
+                # 访问日志表
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS access_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id VARCHAR(255),
+                        action VARCHAR(50) NOT NULL,
+                        resource VARCHAR(255),
+                        result VARCHAR(50),
+                        ip_address VARCHAR(50),
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        details TEXT
+                    )
+                ''')
+                
+                # 安全事件表
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS security_events (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        event_type VARCHAR(50) NOT NULL,
+                        severity INT DEFAULT 1,
+                        description TEXT,
+                        source VARCHAR(50),
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        handled BOOLEAN DEFAULT FALSE
+                    )
+                ''')
+                
+                # 用户会话表
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS user_sessions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        session_id VARCHAR(255) UNIQUE NOT NULL,
+                        user_id VARCHAR(255) NOT NULL,
+                        login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        ip_address VARCHAR(50),
+                        status VARCHAR(20) DEFAULT 'active'
+                    )
+                ''')
+                
+                conn.commit()
+        except Exception as e:
+            self.logger.error(f"初始化安全数据库失败: {e}")
     
     def _setup_critical_files(self):
         """设置关键文件列表"""
@@ -140,16 +137,18 @@ class SecurityProtection:
             
             file_hash = self._calculate_file_hash(file_path)
             
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT OR REPLACE INTO file_integrity (file_path, file_hash, is_critical)
-                VALUES (?, ?, ?)
-            ''', (file_path, file_hash, is_critical))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO file_integrity (file_path, file_hash, is_critical)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    file_hash = VALUES(file_hash),
+                    is_critical = VALUES(is_critical)
+                ''', (file_path, file_hash, is_critical))
+                
+                conn.commit()
             
             self.logger.info(f"文件已添加到完整性检查: {file_path}")
             return True
@@ -173,58 +172,57 @@ class SecurityProtection:
     def check_file_integrity(self, file_path: str = None) -> Dict:
         """检查文件完整性"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            if file_path:
-                cursor.execute('SELECT * FROM file_integrity WHERE file_path = ?', (file_path,))
-                files = cursor.fetchall()
-            else:
-                cursor.execute('SELECT * FROM file_integrity')
-                files = cursor.fetchall()
-            
-            results = []
-            
-            for file_record in files:
-                file_id, path, stored_hash, last_check, is_critical, status = file_record
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
                 
-                if not os.path.exists(path):
-                    result = {
-                        'file_path': path,
-                        'status': 'missing',
-                        'is_critical': bool(is_critical),
-                        'message': '文件不存在'
-                    }
-                    self._log_security_event('file_missing', 3 if is_critical else 1, 
-                                           f'关键文件丢失: {path}' if is_critical else f'文件丢失: {path}')
+                if file_path:
+                    cursor.execute('SELECT id, file_path, file_hash, last_check, is_critical, status FROM file_integrity WHERE file_path = %s', (file_path,))
+                    files = cursor.fetchall()
                 else:
-                    current_hash = self._calculate_file_hash(path)
-                    
-                    if current_hash == stored_hash:
-                        result = {
-                            'file_path': path,
-                            'status': 'valid',
-                            'is_critical': bool(is_critical),
-                            'message': '文件完整性正常'
-                        }
-                        # 更新检查时间
-                        cursor.execute('UPDATE file_integrity SET last_check = CURRENT_TIMESTAMP WHERE id = ?', (file_id,))
-                    else:
-                        result = {
-                            'file_path': path,
-                            'status': 'modified',
-                            'is_critical': bool(is_critical),
-                            'message': '文件已被修改',
-                            'stored_hash': stored_hash,
-                            'current_hash': current_hash
-                        }
-                        self._log_security_event('file_tampered', 4 if is_critical else 2,
-                                               f'文件被篡改: {path}')
+                    cursor.execute('SELECT id, file_path, file_hash, last_check, is_critical, status FROM file_integrity')
+                    files = cursor.fetchall()
                 
-                results.append(result)
-            
-            conn.commit()
-            conn.close()
+                results = []
+                
+                for file_record in files:
+                    file_id, path, stored_hash, last_check, is_critical, status = file_record
+                    
+                    if not os.path.exists(path):
+                        result = {
+                            'file_path': path,
+                            'status': 'missing',
+                            'is_critical': bool(is_critical),
+                            'message': '文件不存在'
+                        }
+                        self._log_security_event('file_missing', 3 if is_critical else 1, 
+                                               f'关键文件丢失: {path}' if is_critical else f'文件丢失: {path}')
+                    else:
+                        current_hash = self._calculate_file_hash(path)
+                        
+                        if current_hash == stored_hash:
+                            result = {
+                                'file_path': path,
+                                'status': 'valid',
+                                'is_critical': bool(is_critical),
+                                'message': '文件完整性正常'
+                            }
+                            # 更新检查时间
+                            cursor.execute('UPDATE file_integrity SET last_check = NOW() WHERE id = %s', (file_id,))
+                        else:
+                            result = {
+                                'file_path': path,
+                                'status': 'modified',
+                                'is_critical': bool(is_critical),
+                                'message': '文件已被修改',
+                                'stored_hash': stored_hash,
+                                'current_hash': current_hash
+                            }
+                            self._log_security_event('file_tampered', 4 if is_critical else 2,
+                                                   f'文件被篡改: {path}')
+                    
+                    results.append(result)
+                
+                conn.commit()
             
             return {'status': 'success', 'results': results}
             
@@ -308,16 +306,15 @@ class SecurityProtection:
     def _log_security_event(self, event_type: str, severity: int, description: str, source: str = None):
         """记录安全事件"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO security_events (event_type, severity, description, source)
-                VALUES (?, ?, ?, ?)
-            ''', (event_type, severity, description, source or 'system'))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO security_events (event_type, severity, description, source)
+                    VALUES (%s, %s, %s, %s)
+                ''', (event_type, severity, description, source or 'system'))
+                
+                conn.commit()
             
             # 根据严重程度记录日志
             if severity >= 4:
@@ -335,36 +332,34 @@ class SecurityProtection:
     def get_security_status(self) -> Dict:
         """获取安全状态"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 获取最近的安全事件
-            cursor.execute('''
-                SELECT event_type, severity, COUNT(*) 
-                FROM security_events 
-                WHERE timestamp > datetime('now', '-24 hours')
-                GROUP BY event_type, severity
-                ORDER BY severity DESC
-            ''')
-            recent_events = cursor.fetchall()
-            
-            # 获取文件完整性状态
-            cursor.execute('''
-                SELECT status, COUNT(*) 
-                FROM file_integrity 
-                GROUP BY status
-            ''')
-            integrity_status = dict(cursor.fetchall())
-            
-            # 获取活跃会话数
-            cursor.execute('''
-                SELECT COUNT(*) 
-                FROM user_sessions 
-                WHERE status = 'active' AND last_activity > datetime('now', '-1 hour')
-            ''')
-            active_sessions = cursor.fetchone()[0]
-            
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 获取最近的安全事件
+                cursor.execute('''
+                    SELECT event_type, severity, COUNT(*) 
+                    FROM security_events 
+                    WHERE timestamp > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                    GROUP BY event_type, severity
+                    ORDER BY severity DESC
+                ''')
+                recent_events = cursor.fetchall()
+                
+                # 获取文件完整性状态
+                cursor.execute('''
+                    SELECT status, COUNT(*) 
+                    FROM file_integrity 
+                    GROUP BY status
+                ''')
+                integrity_status = dict(cursor.fetchall())
+                
+                # 获取活跃会话数
+                cursor.execute('''
+                    SELECT COUNT(*) 
+                    FROM user_sessions 
+                    WHERE status = 'active' AND last_activity > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+                ''')
+                active_sessions = cursor.fetchone()[0]
             
             return {
                 'monitoring_active': self.monitoring_active,
@@ -384,7 +379,6 @@ class AccessControl:
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.db_path = DATABASE_PATH
         self.active_sessions = {}
         self.failed_attempts = {}
         self.max_failed_attempts = 5
@@ -472,16 +466,15 @@ class AccessControl:
         session_id = str(uuid.uuid4())
         
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO user_sessions (session_id, user_id, ip_address)
-                VALUES (?, ?, ?)
-            ''', (session_id, user_id, ip_address))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO user_sessions (session_id, user_id, ip_address)
+                    VALUES (%s, %s, %s)
+                ''', (session_id, user_id, ip_address))
+                
+                conn.commit()
             
             self.active_sessions[session_id] = {
                 'user_id': user_id,
@@ -502,7 +495,7 @@ class AccessControl:
             if session_id in self.active_sessions:
                 session = self.active_sessions[session_id]
                 
-                # 检查会话是否过期（1小时）
+                # 检查会话是否过期
                 if time.time() - session['last_activity'] > 3600:
                     self._invalidate_session(session_id)
                     return {'valid': False, 'message': '会话已过期'}
@@ -526,17 +519,16 @@ class AccessControl:
     def _update_session_activity(self, session_id: str):
         """更新会话活动时间"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                UPDATE user_sessions 
-                SET last_activity = CURRENT_TIMESTAMP 
-                WHERE session_id = ?
-            ''', (session_id,))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    UPDATE user_sessions 
+                    SET last_activity = NOW() 
+                    WHERE session_id = %s
+                ''', (session_id,))
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"更新会话活动时间失败: {e}")
@@ -547,17 +539,16 @@ class AccessControl:
             if session_id in self.active_sessions:
                 del self.active_sessions[session_id]
             
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                UPDATE user_sessions 
-                SET status = 'expired' 
-                WHERE session_id = ?
-            ''', (session_id,))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    UPDATE user_sessions 
+                    SET status = 'expired' 
+                    WHERE session_id = %s
+                ''', (session_id,))
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"使会话无效失败: {e}")
@@ -565,16 +556,15 @@ class AccessControl:
     def _log_access(self, action: str, user_id: str, ip_address: str, result: str, details: str = None):
         """记录访问日志"""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO access_logs (user_id, action, result, ip_address, details)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (user_id, action, result, ip_address, details))
-            
-            conn.commit()
-            conn.close()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO access_logs (user_id, action, result, ip_address, details)
+                    VALUES (%s, %s, %s, %s, %s)
+                ''', (user_id, action, result, ip_address, details))
+                
+                conn.commit()
             
         except Exception as e:
             self.logger.error(f"记录访问日志失败: {e}")
@@ -620,7 +610,6 @@ class ProcessProtection:
                 for protected_process in self.protected_processes:
                     if protected_process not in current_processes:
                         self.logger.warning(f"受保护的进程已停止: {protected_process}")
-                        # 可以在这里添加重启逻辑
                 
                 time.sleep(10)  # 每10秒检查一次
                 

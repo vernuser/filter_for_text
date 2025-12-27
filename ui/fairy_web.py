@@ -1,6 +1,4 @@
-"""
-Fairy主题Web界面 - 简化版Flask应用程序
-"""
+#前端ui界面以及与后端api交互
 import os
 import sys
 import json
@@ -11,20 +9,20 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import threading
 import time
-import sqlite3
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
-from config.settings import DATABASE_PATH, DATABASE_TYPE
+from config.settings import DATABASE_TYPE
 from core.database import db_manager
 from ui.auth_db import AuthDatabase
 from ml.learning_engine import LearningEngine
 from core.blacklist_updater import BlacklistUpdater
+from core.filter_engine import FilterEngine
 from security.protection import SecurityProtection
 from extensions.time_control import TimeController
 
 class FairyWebInterface:
-    """Fairy主题Web用户界面"""
+    """Web用户界面"""
     
     def __init__(self):
         import sys
@@ -49,11 +47,10 @@ class FairyWebInterface:
         self.logger = logging.getLogger(__name__)
         
         # 初始化数据库与学习引擎
-        # 支持通过环境变量FAIRY_AUTH_DB覆盖认证数据库路径，便于测试避免锁表
-        auth_db_path = os.environ.get('FAIRY_AUTH_DB', 'data/auth.db')
-        self.auth_db = AuthDatabase(db_path=auth_db_path)
+        self.auth_db = AuthDatabase()
         self.learning_engine = LearningEngine()
         self.blacklist_updater = BlacklistUpdater()
+        self.filter_engine = FilterEngine()
         self.security_protection = SecurityProtection()
         self.time_controller = TimeController()
         
@@ -133,13 +130,12 @@ class FairyWebInterface:
         @self._require_login
         def api_learn_status():
             try:
-                conn = sqlite3.connect(self.learning_engine.db_path)
-                cur = conn.cursor()
-                cur.execute('SELECT COUNT(*) FROM training_samples')
-                samples = cur.fetchone()[0]
-                cur.execute('SELECT model_type, accuracy, created_time FROM model_performance ORDER BY created_time DESC LIMIT 1')
-                mp = cur.fetchone()
-                conn.close()
+                with db_manager.get_connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute('SELECT COUNT(*) FROM training_samples')
+                    samples = cur.fetchone()[0]
+                    cur.execute('SELECT model_type, accuracy, created_time FROM model_performance ORDER BY created_time DESC LIMIT 1')
+                    mp = cur.fetchone()
                 return jsonify({'success': True, 'samples': samples, 'last_model': mp})
             except Exception as e:
                 return jsonify({'success': False, 'message': str(e)})
@@ -159,6 +155,19 @@ class FairyWebInterface:
                 
                 # 实际分析：URL与文本调用学习引擎
                 if analysis_type == 'url':
+                    # 常用白名单域名
+                    whitelist_domains = ['baidu.com', 'www.baidu.com', 'qq.com', 'weibo.com', 'taobao.com', 'jd.com', 'google.com', 'bing.com', 'microsoft.com', 'apple.com']
+                    url_str = str(content or '').lower()
+                    if any(domain in url_str for domain in whitelist_domains):
+                        results = [{
+                            'name': '可信网站',
+                            'icon': '✅',
+                            'status': 'safe',
+                            'description': '知名可信网站',
+                            'score': 0
+                        }]
+                        return jsonify({'success': True, 'results': results, 'timestamp': datetime.now().isoformat()})
+
                     from urllib.parse import urlparse
                     u = urlparse(str(content or '').strip())
                     valid_url = bool(u.scheme in ('http','https') and u.netloc)
@@ -186,11 +195,11 @@ class FairyWebInterface:
                         if self.learning_engine.is_known_malicious(content, 'url'):
                             results[0]['status'] = 'danger'
                             results[0]['score'] = max(results[0]['score'], 95)
-                            results[0]['description'] = '自学习特征验证'
+                            results[0]['description'] = '特征库匹配验证'
                         elif valid_url and self.learning_engine.is_in_training_samples(content):
                             results[0]['status'] = 'danger'
                             results[0]['score'] = max(results[0]['score'], 95)
-                            results[0]['description'] = '自学习特征验证'
+                            results[0]['description'] = '特征库匹配验证'
                     except Exception:
                         pass
                 elif analysis_type == 'text':
@@ -231,26 +240,25 @@ class FairyWebInterface:
                         if self.learning_engine.is_known_malicious(content, 'text'):
                             results[0]['status'] = 'danger'
                             results[0]['score'] = max(results[0]['score'], 95)
-                            results[0]['description'] = '自学习特征验证'
+                            results[0]['description'] = '特征库匹配验证'
                         elif in_train:
                             results[0]['status'] = 'danger'
                             results[0]['score'] = max(results[0]['score'], 95)
-                            results[0]['description'] = '自学习特征验证'
+                            results[0]['description'] = '特征库匹配验证'
                     except Exception:
                         pass
                     try:
-                        conn = sqlite3.connect(self.learning_engine.db_path)
-                        cur = conn.cursor()
-                        cur.execute('SELECT 1 FROM training_samples WHERE content = ? OR instr(?, content) > 0 OR instr(content, ?) > 0 LIMIT 1', (content, content, content))
-                        hit = bool(cur.fetchone())
-                        conn.close()
+                        with db_manager.get_connection() as conn:
+                            cur = conn.cursor()
+                            cur.execute('SELECT 1 FROM training_samples WHERE content = %s OR instr(%s, content) > 0 OR instr(content, %s) > 0 LIMIT 1', (content, content, content))
+                            hit = bool(cur.fetchone())
                     except Exception:
                         hit = False
                     self.logger.info(f"训练样本命中(Text): {hit}")
                     if hit:
                         results[0]['status'] = 'danger'
                         results[0]['score'] = max(results[0]['score'], 95)
-                        results[0]['description'] = '自学习特征验证'
+                        results[0]['description'] = '特征库匹配验证'
                     try:
                         stypes = pred.get('sensitive_types') or self.learning_engine._classify_sensitive_text(content)
                     except Exception:
@@ -270,6 +278,19 @@ class FairyWebInterface:
                 elif analysis_type == 'ip':
                     import re
                     ip_str = str(content or '').strip()
+                    
+                    # 1. 优先使用过滤引擎（IP黑名单）
+                    allowed, violation = self.filter_engine.filter_ip(ip_str)
+                    if not allowed and violation:
+                         results = [{
+                            'name': 'IP黑名单',
+                            'icon': '🚫',
+                            'status': 'danger',
+                            'description': f"恶意IP: {violation.get('matched_ip')}",
+                            'score': 100
+                        }]
+                         return jsonify({'success': True, 'results': results, 'timestamp': datetime.now().isoformat()})
+
                     valid_ip = bool(re.fullmatch(r'([0-9]{1,3}\.){3}[0-9]{1,3}', ip_str))
                     if not valid_ip:
                         results = [{
@@ -300,76 +321,15 @@ class FairyWebInterface:
                         if self.learning_engine.is_known_malicious(content, 'ip') or (valid_ip and in_train_ip):
                             results[0]['status'] = 'danger'
                             results[0]['score'] = max(results[0]['score'], 95)
-                            results[0]['description'] = '自学习特征验证'
+                            results[0]['description'] = '特征库匹配验证'
                     except Exception:
                         pass
-                    try:
-                        conn = sqlite3.connect(self.learning_engine.db_path)
-                        cur = conn.cursor()
-                        cur.execute('SELECT 1 FROM training_samples WHERE content = ? OR instr(?, content) > 0 OR instr(content, ?) > 0 LIMIT 1', (content, content, content))
-                        hit = bool(cur.fetchone())
-                        conn.close()
-                    except Exception:
-                        hit = False
-                    self.logger.info(f"训练样本命中(IP): {hit}")
-                    if hit:
-                        results[0]['status'] = 'danger'
-                        results[0]['score'] = max(results[0]['score'], 95)
-                        results[0]['description'] = '自学习特征验证'
-                elif analysis_type == 'domain':
-                    # 域名分析：按URL模型处理，必要时补充协议前缀
-                    dom = (content or '').strip()
-                    if dom and not dom.startswith(('http://', 'https://')):
-                        dom_for_pred = f"http://{dom}"
-                    else:
-                        dom_for_pred = dom
-                    in_train_dom = False
-                    try:
-                        in_train_dom = self.learning_engine.is_in_training_samples(dom)
-                    except Exception:
-                        in_train_dom = False
-                    pred = self.learning_engine.predict(dom_for_pred, 'url')
-                    self.logger.info(f"域名预测: malicious={pred.get('is_malicious')}, conf={pred.get('confidence')}")
-                    status = 'danger' if pred.get('is_malicious') else 'safe'
-                    score = int(round(pred.get('confidence', 0) * 100))
-                    results = [{
-                        'name': '域名安全检测',
-                        'icon': '🏷️',
-                        'status': status,
-                        'description': '检测正常，未发现问题' if status == 'safe' else '发现严重问题，需要处理',
-                        'score': max(0, min(100, score))
-                    }]
-                    try:
-                        if self.learning_engine.is_known_malicious(dom, 'domain') or in_train_dom:
-                            results[0]['status'] = 'danger'
-                            results[0]['score'] = max(results[0]['score'], 95)
-                            results[0]['description'] = '自学习特征验证'
-                    except Exception:
-                        pass
-                    try:
-                        conn = sqlite3.connect(self.learning_engine.db_path)
-                        cur = conn.cursor()
-                        cur.execute('SELECT 1 FROM training_samples WHERE content = ? OR instr(?, content) > 0 OR instr(content, ?) > 0 LIMIT 1', (dom, dom, dom))
-                        hit = bool(cur.fetchone())
-                        conn.close()
-                    except Exception:
-                        hit = False
-                    self.logger.info(f"训练样本命中(Domain): {hit}")
-                    if hit:
-                        results[0]['status'] = 'danger'
-                        results[0]['score'] = max(results[0]['score'], 95)
-                        results[0]['description'] = '自学习特征验证'
+                
                 else:
-                    # 其他类型暂用模拟
-                    self.logger.warning(f"暂不支持的分析类型: {analysis_type}，使用模拟分析")
-                    results = self._mock_analysis(analysis_type, content)
-                
-                return jsonify({
-                    'success': True,
-                    'results': results,
-                    'timestamp': datetime.now().isoformat()
-                })
-                
+                    return jsonify({'success': False, 'message': '不支持的分析类型'}), 400
+
+                return jsonify({'success': True, 'results': results, 'timestamp': datetime.now().isoformat()})
+
             except Exception as e:
                 self.logger.exception(f"分析错误: {e}")
                 return jsonify({
@@ -399,10 +359,8 @@ class FairyWebInterface:
 
                 # 当计数缺失或为0时，直接从数据库回退统计
                 if (url_count == 0 and text_count == 0) or last_update is None:
-                    import sqlite3
-                    conn = sqlite3.connect(self.blacklist_updater.db_path)
-                    cursor = conn.cursor()
-                    try:
+                    with db_manager.get_connection() as conn:
+                        cursor = conn.cursor()
                         cursor.execute('SELECT COUNT(*) FROM blacklist_urls')
                         url_row = cursor.fetchone()
                         if url_row:
@@ -415,8 +373,6 @@ class FairyWebInterface:
                         upd = cursor.fetchone()
                         if upd:
                             last_update = upd[0]
-                    finally:
-                        conn.close()
 
                 status = {
                     'auto_update_enabled': auto_enabled,
@@ -578,26 +534,21 @@ class FairyWebInterface:
         @self._require_login
         def api_learn_samples():
             try:
-                import sqlite3
                 limit = int(request.args.get('limit', 20))
-                conn = sqlite3.connect(DATABASE_PATH)
-                cursor = conn.cursor()
-                cursor.execute('SELECT content, content_type, label, created_time FROM training_samples ORDER BY created_time DESC LIMIT ?', (limit,))
-                rows = cursor.fetchall()
-                conn.close()
-                # 若SQLite无数据且为MySQL模式，回退至MySQL
-                if not rows and DATABASE_TYPE == 'mysql':
-                    try:
-                        mysql_rows = db_manager.execute_query(
-                            'SELECT content, content_type, label, created_time FROM training_samples ORDER BY created_time DESC LIMIT %s',
-                            params=(limit,),
-                            fetch_all=True
-                        )
-                        if not isinstance(mysql_rows, (list, tuple)):
-                            mysql_rows = []
-                        rows = [(r[0], r[1], int(r[2]), str(r[3])) for r in mysql_rows]
-                    except Exception:
-                        rows = []
+                
+                try:
+                    mysql_rows = db_manager.execute_query(
+                        'SELECT content, content_type, label, created_time FROM training_samples ORDER BY created_time DESC LIMIT %s',
+                        params=(limit,),
+                        fetch_all=True
+                    )
+                    if not isinstance(mysql_rows, (list, tuple)):
+                        mysql_rows = []
+                    rows = [(r[0], r[1], int(r[2]), str(r[3])) for r in mysql_rows]
+                except Exception as e:
+                    self.logger.error(f"获取样本失败: {e}")
+                    rows = []
+                    
                 items = []
                 for content, ctype, label, ctime in rows:
                     excerpt = content[:120].replace('\n',' ')
@@ -608,32 +559,15 @@ class FairyWebInterface:
 
     def _validate_login(self, username, password):
         """验证登录"""
-        # 增加简单重试以缓解偶发的SQLite锁表问题
-        retries = 3
-        last_message = "系统忙，请稍后再试"
-        for _ in range(retries):
-            try:
-                success, message = self.auth_db.validate_user(username, password)
-                # 记录登录尝试
-                if username:
-                    self.auth_db.log_login_attempt(username, success)
-                return success, message
-            except sqlite3.OperationalError as e:
-                if 'database is locked' in str(e).lower():
-                    time.sleep(0.5)
-                    continue
-                else:
-                    last_message = str(e)
-                    break
-            except Exception as e:
-                last_message = str(e)
-                break
-        # 数据库长时间锁定时，在开启FAIRY_OFFLINE_LOGIN时允许默认账户临时离线登录
-        offline_flag = os.environ.get('FAIRY_OFFLINE_LOGIN', '').lower() in ('1', 'true', 'yes')
-        if offline_flag and username == 'admin' and password == 'admin123':
-            self.logger.warning('数据库锁定，启用离线登录模式: admin/admin123')
-            return True, '登录成功(离线模式)'
-        return False, last_message
+        try:
+            success, message = self.auth_db.validate_user(username, password)
+            # 记录登录尝试
+            if username:
+                self.auth_db.log_login_attempt(username, success)
+            return success, message
+        except Exception as e:
+            self.logger.error(f"登录验证异常: {e}")
+            return False, str(e)
 
     def _require_login(self, f):
         """登录装饰器"""

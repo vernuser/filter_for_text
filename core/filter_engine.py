@@ -1,81 +1,28 @@
-"""
-核心过滤引擎
-实现文本、URL、IP地址等内容的过滤功能
-"""
 import re
 import ipaddress
 import validators
 import logging
 from typing import List, Dict, Tuple, Optional
 from urllib.parse import urlparse
-import sqlite3
 import os
-from config.settings import DATABASE_PATH, DATA_DIR
+from config.settings import DATA_DIR
+from core.database import db_manager
+
+import hashlib
 
 class FilterEngine:
     """核心过滤引擎类"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.db_path = DATABASE_PATH
         self._init_database()
         self._load_patterns()
     
     def _init_database(self):
         """初始化数据库"""
         os.makedirs(DATA_DIR, exist_ok=True)
-        
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # 创建黑名单表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS blacklist_text (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                pattern TEXT UNIQUE NOT NULL,
-                category TEXT NOT NULL,
-                severity INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS blacklist_urls (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                url TEXT UNIQUE NOT NULL,
-                domain TEXT NOT NULL,
-                category TEXT NOT NULL,
-                severity INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS blacklist_ips (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ip_address TEXT UNIQUE NOT NULL,
-                ip_range TEXT,
-                category TEXT NOT NULL,
-                severity INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # 创建过滤日志表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS filter_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                content_type TEXT NOT NULL,
-                original_content TEXT,
-                filtered_content TEXT,
-                filter_reason TEXT,
-                severity INTEGER,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
+        # 确保表已创建
+        db_manager.init_mysql_tables()
         
         # 初始化默认黑名单
         self._init_default_blacklist()
@@ -104,63 +51,61 @@ class FilterEngine:
             ('10.0.0.50', 'blocked', 2),
         ]
         
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # 插入默认文本模式
-        for pattern, category, severity in default_text_patterns:
-            cursor.execute('''
-                INSERT OR IGNORE INTO blacklist_text (pattern, category, severity)
-                VALUES (?, ?, ?)
-            ''', (pattern, category, severity))
-        
-        # 插入默认URL
-        for url, category, severity in default_urls:
-            domain = urlparse(f'http://{url}').netloc
-            cursor.execute('''
-                INSERT OR IGNORE INTO blacklist_urls (url, domain, category, severity)
-                VALUES (?, ?, ?, ?)
-            ''', (url, domain, category, severity))
-        
-        # 插入默认IP
-        for ip, category, severity in default_ips:
-            cursor.execute('''
-                INSERT OR IGNORE INTO blacklist_ips (ip_address, category, severity)
-                VALUES (?, ?, ?)
-            ''', (ip, category, severity))
-        
-        conn.commit()
-        conn.close()
+        try:
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 插入默认文本模式
+                for pattern, category, severity in default_text_patterns:
+                    cursor.execute('''
+                        INSERT IGNORE INTO blacklist_text (pattern, category, severity)
+                        VALUES (%s, %s, %s)
+                    ''', (pattern, category, severity))
+                
+                # 插入默认URL
+                for url, category, severity in default_urls:
+                    domain = urlparse(f'http://{url}').netloc
+                    url_hash = hashlib.sha256(url.encode()).hexdigest()
+                    cursor.execute('''
+                        INSERT IGNORE INTO blacklist_urls (url, url_hash, domain, category, severity)
+                        VALUES (%s, %s, %s, %s, %s)
+                    ''', (url, url_hash, domain, category, severity))
+                
+                # 插入默认IP
+                for ip, category, severity in default_ips:
+                    cursor.execute('''
+                        INSERT IGNORE INTO blacklist_ips (ip_address, category, severity)
+                        VALUES (%s, %s, %s)
+                    ''', (ip, category, severity))
+                
+                conn.commit()
+        except Exception as e:
+            self.logger.error(f"初始化默认黑名单失败: {e}")
     
     def _load_patterns(self):
         """从数据库加载过滤模式"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # 加载文本模式
-        cursor.execute('SELECT pattern, category, severity FROM blacklist_text')
-        self.text_patterns = cursor.fetchall()
-        
-        # 加载URL模式
-        cursor.execute('SELECT url, domain, category, severity FROM blacklist_urls')
-        self.url_patterns = cursor.fetchall()
-        
-        # 加载IP模式
-        cursor.execute('SELECT ip_address, category, severity FROM blacklist_ips')
-        self.ip_patterns = cursor.fetchall()
-        
-        conn.close()
+        try:
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 加载文本模式
+                cursor.execute('SELECT pattern, category, severity FROM blacklist_text')
+                self.text_patterns = cursor.fetchall()
+                
+                # 加载URL模式
+                cursor.execute('SELECT url, domain, category, severity FROM blacklist_urls')
+                self.url_patterns = cursor.fetchall()
+                
+                # 加载IP模式
+                cursor.execute('SELECT ip_address, category, severity FROM blacklist_ips')
+                self.ip_patterns = cursor.fetchall()
+        except Exception as e:
+            self.logger.error(f"加载过滤模式失败: {e}")
+            self.text_patterns = []
+            self.url_patterns = []
+            self.ip_patterns = []
     
     def filter_text(self, text: str) -> Tuple[str, List[Dict]]:
-        """
-        过滤文本内容
-        
-        Args:
-            text: 待过滤的文本
-            
-        Returns:
-            Tuple[str, List[Dict]]: (过滤后的文本, 检测到的违规内容列表)
-        """
         violations = []
         filtered_text = text
         
@@ -184,15 +129,6 @@ class FilterEngine:
         return filtered_text, violations
     
     def filter_url(self, url: str) -> Tuple[bool, Optional[Dict]]:
-        """
-        过滤URL
-        
-        Args:
-            url: 待检查的URL
-            
-        Returns:
-            Tuple[bool, Optional[Dict]]: (是否允许访问, 违规信息)
-        """
         try:
             # 验证URL格式
             if not validators.url(url):
@@ -221,15 +157,6 @@ class FilterEngine:
             return False, {'reason': 'filter_error', 'severity': 1}
     
     def filter_ip(self, ip: str) -> Tuple[bool, Optional[Dict]]:
-        """
-        过滤IP地址
-        
-        Args:
-            ip: 待检查的IP地址
-            
-        Returns:
-            Tuple[bool, Optional[Dict]]: (是否允许访问, 违规信息)
-        """
         try:
             # 验证IP格式
             ip_obj = ipaddress.ip_address(ip)
@@ -261,105 +188,112 @@ class FilterEngine:
     
     def add_text_pattern(self, pattern: str, category: str, severity: int = 1):
         """添加文本过滤模式"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
         try:
-            cursor.execute('''
-                INSERT INTO blacklist_text (pattern, category, severity)
-                VALUES (?, ?, ?)
-            ''', (pattern, category, severity))
-            conn.commit()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO blacklist_text (pattern, category, severity)
+                    VALUES (%s, %s, %s)
+                ''', (pattern, category, severity))
+                conn.commit()
+            
             self._load_patterns()  # 重新加载模式
             self.logger.info(f"添加文本模式: {pattern}")
-        except sqlite3.IntegrityError:
-            self.logger.warning(f"文本模式已存在: {pattern}")
-        finally:
-            conn.close()
+        except Exception as e:
+            if "Duplicate entry" in str(e):
+                self.logger.warning(f"文本模式已存在: {pattern}")
+            else:
+                self.logger.error(f"添加文本模式失败: {e}")
     
     def add_url_pattern(self, url: str, category: str, severity: int = 1):
         """添加URL过滤模式"""
         domain = urlparse(f'http://{url}' if not url.startswith('http') else url).netloc
         
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
         try:
-            cursor.execute('''
-                INSERT INTO blacklist_urls (url, domain, category, severity)
-                VALUES (?, ?, ?, ?)
-            ''', (url, domain, category, severity))
-            conn.commit()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO blacklist_urls (url, domain, category, severity)
+                    VALUES (%s, %s, %s, %s)
+                ''', (url, domain, category, severity))
+                conn.commit()
+            
             self._load_patterns()  # 重新加载模式
             self.logger.info(f"添加URL模式: {url}")
-        except sqlite3.IntegrityError:
-            self.logger.warning(f"URL模式已存在: {url}")
-        finally:
-            conn.close()
+        except Exception as e:
+            if "Duplicate entry" in str(e):
+                self.logger.warning(f"URL模式已存在: {url}")
+            else:
+                self.logger.error(f"添加URL模式失败: {e}")
     
     def add_ip_pattern(self, ip: str, category: str, severity: int = 1):
         """添加IP过滤模式"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
         try:
-            cursor.execute('''
-                INSERT INTO blacklist_ips (ip_address, category, severity)
-                VALUES (?, ?, ?)
-            ''', (ip, category, severity))
-            conn.commit()
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO blacklist_ips (ip_address, category, severity)
+                    VALUES (%s, %s, %s)
+                ''', (ip, category, severity))
+                conn.commit()
+            
             self._load_patterns()  # 重新加载模式
             self.logger.info(f"添加IP模式: {ip}")
-        except sqlite3.IntegrityError:
-            self.logger.warning(f"IP模式已存在: {ip}")
-        finally:
-            conn.close()
+        except Exception as e:
+            if "Duplicate entry" in str(e):
+                self.logger.warning(f"IP模式已存在: {ip}")
+            else:
+                self.logger.error(f"添加IP模式失败: {e}")
     
     def _log_filter_action(self, content_type: str, original: str, filtered: str, violations: List[Dict]):
         """记录过滤操作"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        reason = '; '.join([f"{v.get('category', 'unknown')}:{v.get('severity', 1)}" for v in violations])
-        max_severity = max([v.get('severity', 1) for v in violations]) if violations else 1
-        
-        cursor.execute('''
-            INSERT INTO filter_logs (content_type, original_content, filtered_content, filter_reason, severity)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (content_type, original[:1000], filtered[:1000], reason, max_severity))
-        
-        conn.commit()
-        conn.close()
+        try:
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                reason = '; '.join([f"{v.get('category', 'unknown')}:{v.get('severity', 1)}" for v in violations])
+                max_severity = max([v.get('severity', 1) for v in violations]) if violations else 1
+                
+                cursor.execute('''
+                    INSERT INTO filter_logs (content_type, original_content, filtered_content, filter_reason, severity)
+                    VALUES (%s, %s, %s, %s, %s)
+                ''', (content_type, original[:1000], filtered[:1000], reason, max_severity))
+                
+                conn.commit()
+        except Exception as e:
+            self.logger.error(f"记录过滤日志失败: {e}")
     
     def get_filter_stats(self) -> Dict:
         """获取过滤统计信息"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # 统计各类型过滤次数
-        cursor.execute('''
-            SELECT content_type, COUNT(*) as count, AVG(severity) as avg_severity
-            FROM filter_logs
-            GROUP BY content_type
-        ''')
-        stats = cursor.fetchall()
-        
-        # 统计最近24小时的过滤次数
-        cursor.execute('''
-            SELECT COUNT(*) as recent_count
-            FROM filter_logs
-            WHERE timestamp > datetime('now', '-1 day')
-        ''')
-        recent_count = cursor.fetchone()[0]
-        
-        conn.close()
-        
-        return {
-            'by_type': {stat[0]: {'count': stat[1], 'avg_severity': stat[2]} for stat in stats},
-            'recent_24h': recent_count,
-            'total_patterns': {
-                'text': len(self.text_patterns),
-                'url': len(self.url_patterns),
-                'ip': len(self.ip_patterns)
-            }
-        }
+        try:
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 统计各类型过滤次数
+                cursor.execute('''
+                    SELECT content_type, COUNT(*) as count, AVG(severity) as avg_severity
+                    FROM filter_logs
+                    GROUP BY content_type
+                ''')
+                stats = cursor.fetchall()
+                
+                # 统计最近24小时的过滤次数
+                cursor.execute('''
+                    SELECT COUNT(*) as recent_count
+                    FROM filter_logs
+                    WHERE timestamp > DATE_SUB(NOW(), INTERVAL 1 DAY)
+                ''')
+                recent_count = cursor.fetchone()[0]
+                
+                return {
+                    'by_type': {stat[0]: {'count': stat[1], 'avg_severity': stat[2]} for stat in stats},
+                    'recent_24h': recent_count,
+                    'total_patterns': {
+                        'text': len(self.text_patterns),
+                        'url': len(self.url_patterns),
+                        'ip': len(self.ip_patterns)
+                    }
+                }
+        except Exception as e:
+            self.logger.error(f"获取过滤统计失败: {e}")
+            return {}
