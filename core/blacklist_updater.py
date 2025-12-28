@@ -1,4 +1,4 @@
-
+#更新黑名单
 import requests
 import re
 import logging
@@ -15,8 +15,6 @@ from core.database import db_manager
 import hashlib
 
 class BlacklistUpdater:
-    """黑名单自动更新器"""
-    
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.update_interval = FILTER_CONFIG.get('auto_update_interval', 24)

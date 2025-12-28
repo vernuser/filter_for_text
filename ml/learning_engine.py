@@ -122,7 +122,7 @@ class LearningEngine:
         features['line_count'] = text.count('\n')
         
         # 字符类型统计
-        features['digit_ratio'] = sum(c.isdigit() for c in text) / len(text) if text else 0
+        features['digit_ratio'] = sum(c.isdigit() for c in text) / len(text) if text else 0   #计算占比，url数量，特殊符号的密度，文本结构总体还是不变的，防止诈骗 如 + v 1 .3 4 5 这种
         features['alpha_ratio'] = sum(c.isalpha() for c in text) / len(text) if text else 0
         features['space_ratio'] = sum(c.isspace() for c in text) / len(text) if text else 0
         features['punct_ratio'] = sum(not c.isalnum() and not c.isspace() for c in text) / len(text) if text else 0
@@ -154,7 +154,6 @@ class LearningEngine:
         return features
     
     def _extract_url_features(self, url: str) -> Dict:
-        """提取URL特征"""
         features = {}
         
         # 基本特征
@@ -198,7 +197,6 @@ class LearningEngine:
         return features
     
     def _extract_email_features(self, email_content: str) -> Dict:
-        """提取邮件特征"""
         features = {}
         
         # 基本特征
@@ -221,7 +219,6 @@ class LearningEngine:
         return features
     
     def _extract_common_features(self, content: str) -> Dict:
-        """提取通用特征"""
         features = {}
         
         # 熵计算
@@ -241,7 +238,7 @@ class LearningEngine:
         return features
     
     def _update_feature_library(self, features: Dict, label: int):
-        """更新特征库"""
+        #更新特征库
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -266,7 +263,7 @@ class LearningEngine:
             self.logger.error(f"更新特征库失败: {e}")
     
     def train_models(self, force_retrain: bool = False) -> Dict:
-        """训练机器学习模型"""
+        #训练机器学习模型
         try:
             # 获取训练数据
             training_data = self._get_training_data()
@@ -363,7 +360,7 @@ class LearningEngine:
             return []
 
     def _update_dynamic_signals(self, training_data: List[Dict]):
-        """从恶意样本中抽取关键词与域名，用于后续判断增强"""
+        #从恶意样本中抽取关键词与域名，用于后续判断增强
         try:
             text_mal = [x['content'] for x in training_data if x['content_type'] == 'text' and int(x['label']) == 1]
             url_mal = [x['content'] for x in training_data if x['content_type'] == 'url' and int(x['label']) == 1]
@@ -392,7 +389,7 @@ class LearningEngine:
             self.logger.error(f"更新自学习信号失败: {e}")
     
     def _train_text_classifier(self, text_data: List[Dict]) -> Dict:
-        """训练文本分类器"""
+        #训练文本分类器
         try:
             # 准备数据
             texts = [item['content'] for item in text_data]
@@ -462,7 +459,7 @@ class LearningEngine:
             return {'error': str(e)}
     
     def _train_url_classifier(self, url_data: List[Dict]) -> Dict:
-        """训练URL分类器"""
+        #训练URL分类器
         try:
             # 准备特征数据
             feature_list = []
@@ -516,7 +513,7 @@ class LearningEngine:
             return {'error': str(e)}
     
     def predict(self, content: str, content_type: str) -> Dict:
-        """预测内容是否恶意"""
+        #预测内容是否恶意
         try:
             # 轻量内容清洗：URL/IP 去除反引号与首尾空白
             clean_content = content
@@ -756,7 +753,7 @@ class LearningEngine:
             return result
     
     def _record_prediction(self, content: str, content_type: str, prediction: Dict):
-        """记录预测结果"""
+        #记录预测结果
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -779,7 +776,7 @@ class LearningEngine:
             self.logger.error(f"记录预测结果失败: {e}")
     
     def update_prediction_feedback(self, prediction_id: int, actual_label: int):
-        """更新预测反馈"""
+        #更新预测反馈
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -809,7 +806,7 @@ class LearningEngine:
             self.logger.error(f"更新预测反馈失败: {e}")
     
     def _check_retrain_condition(self):
-        """检查是否需要重新训练"""
+        #检查是否需要重新训练
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -841,7 +838,7 @@ class LearningEngine:
             self.logger.error(f"检查重新训练条件失败: {e}")
     
     def _save_models(self):
-        """保存模型"""
+        #保存模型
         try:
             models = {
                 'text_classifier': self.text_classifier,
@@ -861,7 +858,7 @@ class LearningEngine:
             self.logger.error(f"保存模型失败: {e}")
     
     def _load_models(self):
-        """加载模型"""
+        #加载模型
         try:
             if os.path.exists(self.model_path):
                 with open(self.model_path, 'rb') as f:
@@ -880,7 +877,7 @@ class LearningEngine:
             self.logger.error(f"加载模型失败: {e}")
     
     def _load_features(self):
-        """加载特征库"""
+        #加载特征库
         try:
             if os.path.exists(self.feature_path):
                 with open(self.feature_path, 'r', encoding='utf-8') as f:
@@ -896,7 +893,7 @@ class LearningEngine:
             self.logger.error(f"加载特征库失败: {e}")
     
     def _record_model_performance(self, results: Dict):
-        """记录模型性能"""
+        #记录模型性能
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -920,7 +917,7 @@ class LearningEngine:
             self.logger.error(f"记录模型性能失败: {e}")
     
     def get_learning_statistics(self) -> Dict:
-        """获取学习统计信息"""
+        #获取学习统计信息
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -1009,7 +1006,7 @@ class LearningEngine:
             return False
     
     def export_feature_library(self) -> Dict:
-        """导出特征库"""
+        #导出特征库
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()

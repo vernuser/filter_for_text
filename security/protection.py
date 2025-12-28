@@ -160,7 +160,7 @@ class SecurityProtection:
     def _calculate_file_hash(self, file_path: str) -> str:
         """计算文件哈希值"""
         try:
-            hash_sha256 = hashlib.sha256()
+            hash_sha256 = hashlib.sha256()#检查文件完整性，避免直接攻击系统
             with open(file_path, "rb") as f:
                 for chunk in iter(lambda: f.read(4096), b""):
                     hash_sha256.update(chunk)

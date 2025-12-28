@@ -431,7 +431,7 @@ class FeatureUpdater:
                 # 重新计算特征重要性
                 self._recalculate_feature_importance(cursor)
                 
-                # 压缩特征库 (MySQL不需要VACUUM)
+                # 压缩特征库
                 self._compress_feature_library(cursor)
                 
                 conn.commit()

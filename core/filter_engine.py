@@ -11,15 +11,13 @@ from core.database import db_manager
 import hashlib
 
 class FilterEngine:
-    """核心过滤引擎类"""
-    
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self._init_database()
         self._load_patterns()
     
     def _init_database(self):
-        """初始化数据库"""
+        #初始化数据库
         os.makedirs(DATA_DIR, exist_ok=True)
         # 确保表已创建
         db_manager.init_mysql_tables()
@@ -28,7 +26,7 @@ class FilterEngine:
         self._init_default_blacklist()
     
     def _init_default_blacklist(self):
-        """初始化默认黑名单"""
+        #初始化默认黑名单
         default_text_patterns = [
             ('暴力', 'violence', 3),
             ('色情', 'adult', 3),
@@ -83,7 +81,6 @@ class FilterEngine:
             self.logger.error(f"初始化默认黑名单失败: {e}")
     
     def _load_patterns(self):
-        """从数据库加载过滤模式"""
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -110,7 +107,7 @@ class FilterEngine:
         filtered_text = text
         
         for pattern, category, severity in self.text_patterns:
-            if re.search(pattern, text, re.IGNORECASE):
+            if re.search(pattern, text, re.IGNORECASE):#正则匹配
                 violations.append({
                     'type': 'text',
                     'pattern': pattern,
@@ -135,7 +132,7 @@ class FilterEngine:
                 return False, {'reason': 'invalid_url', 'severity': 1}
             
             parsed_url = urlparse(url)
-            domain = parsed_url.netloc.lower()
+            domain = parsed_url.netloc.lower()#归一化，防止大小写绕过
             
             # 检查域名黑名单
             for blocked_url, blocked_domain, category, severity in self.url_patterns:
@@ -187,7 +184,7 @@ class FilterEngine:
             return False, {'reason': 'filter_error', 'severity': 1}
     
     def add_text_pattern(self, pattern: str, category: str, severity: int = 1):
-        """添加文本过滤模式"""
+        #文本过滤模式
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -206,7 +203,7 @@ class FilterEngine:
                 self.logger.error(f"添加文本模式失败: {e}")
     
     def add_url_pattern(self, url: str, category: str, severity: int = 1):
-        """添加URL过滤模式"""
+        #url过滤模式
         domain = urlparse(f'http://{url}' if not url.startswith('http') else url).netloc
         
         try:
@@ -227,7 +224,7 @@ class FilterEngine:
                 self.logger.error(f"添加URL模式失败: {e}")
     
     def add_ip_pattern(self, ip: str, category: str, severity: int = 1):
-        """添加IP过滤模式"""
+        #ip过滤模式
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -246,7 +243,6 @@ class FilterEngine:
                 self.logger.error(f"添加IP模式失败: {e}")
     
     def _log_filter_action(self, content_type: str, original: str, filtered: str, violations: List[Dict]):
-        """记录过滤操作"""
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -264,7 +260,6 @@ class FilterEngine:
             self.logger.error(f"记录过滤日志失败: {e}")
     
     def get_filter_stats(self) -> Dict:
-        """获取过滤统计信息"""
         try:
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
